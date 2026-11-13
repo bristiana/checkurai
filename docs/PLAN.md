@@ -19,16 +19,30 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 
 **Hard rule from Intel:** the cell must run on the Intel station laptop and use Intel's Physical AI software. A cell built only on LeRobot, or run on our own laptops, doesn't count.
 
+## 0. Build order (Sat 01:00 revision; overrides the timeline in §10 where they differ)
+1. **Smoke test:** 3 demos → ACT on the XPU → run on the arm. Proves record, train, export, run.
+2. **Scene, fixed for good:** mat, HOME pose, inspection spot, 2 bowls, cameras, lamp, white card behind the spot. Tape everything and photograph it.
+3. **Anomaly data:** every brick on the spot by hand, about 10 rotations each, from both views. Then removable defects for the test set.
+4. **Anomaly models:** PatchCore per view, exported to OpenVINO, running on the NPU, with the threshold set from good-brick scores.
+5. **Demos in Studio:** `pick` 40–60 (shifted, cluttered), `place_good` 20, `place_bad` 20. HOME → task → HOME every time.
+6. **Train** 3 ACT (Modal in parallel, or the local XPU one after another).
+7. **Orchestrator** (`physicalai` runtime, one process owns the arm and all cameras): pick → spot check → inspect → place → log.
+8. **Test 20 cycles**, record top-up demos for the failures, retrain.
+9. **Numbers:** accuracy and confusion matrix, cycle time, device matrix (CPU/GPU/NPU), power and temperature.
+10. **Story:** video, deck, README. Code freeze Sun 06:00, submit by 09:30.
+
+Later upgrades, only once 1–9 work: ArUco/3D twin and camera-bump recovery, the multi-view dance, SmolVLA, the belt.
+
 ## 2. Decisions
 | # | Topic | Decision |
 |---|---|---|
 | D1 | What "3D" means | A live 3D twin (Rerun) plus 3D decisions (supervisor checks). Depth is **not** fed into the policy. |
 | D2 | Camera → robot calibration | **ArUco markers** (4 × DICT_4X4_50, 50 mm, `tools/make_markers.py`) taped at the workspace edges, never under bricks.<br>**Once:** touch each marker centre with the gripper tip in teleop and record the FK positions. A Kabsch fit gives `T_table_base`.<br>**Every frame:** solvePnP on the visible markers gives `T_cam_table` from a single image, so re-calibration after a camera bump is instant. The camera-moved detector is marker reprojection drift above 3 px.<br>**Cross-check:** brick in the gripper (about 10 poses, RGB-D centroid compared with FK); reject if RMS > 15 mm. |
 | D3 | Camera changes | Find cameras by serial or USB name, never by `/dev/videoN`. A "camera moved" detector. 3D re-calibrates automatically. **The policy is trained on 3 top-camera placements, with augmentation.** |
-| D4 | Policy split | ACT `pick` (pick a brick and lift it), then a **scripted** inspection dance, then ACT `place_good` or ACT `place_bad`. SmolVLA with task strings is a stretch goal. |
-| D5 | Inspection | Active multi-view sweep (V0–V6, §5) with a tight crop and its own model per view. Score = max over views of the normalised score. |
+| D4 | Policy split (revised Sat 01:00) | Three ACT policies, each starting and ending at the same taped **HOME** pose:<br>1. `pick`: from anywhere on the mat (shifted and cluttered) to the taped **inspection spot**, then release and return HOME.<br>2. `place_good` and 3. `place_bad`: from the inspection spot to the good or defective bowl, then HOME.<br>The fixed spot gives every brick the same camera view, and the place policies always start from the same place, so they need few demos. The scripted multi-view dance with the brick in the gripper is a later upgrade (§5). SmolVLA is a stretch goal. |
+| D5 | Inspection | The brick sits on the inspection spot and is seen by **two fixed views**: the `inspection` camera from the side and the `top` camera from above (a tight crop of the spot). Each view has its own PatchCore model, trained on good bricks only, in every colour and many rotations. Score = max over views of the normalised score. The 7-view dance (V0–V6, §5) comes later if time allows. |
 | D6 | Uncertain bricks | Re-present at a new angle once. If still uncertain, it goes to the **defective bowl** (fail-safe) and is logged as `uncertain→reject`. A third "review" spot is a stretch goal. |
-| D7 | Done signal | Pose + 3D: gripper closed, arm near the lift pose and still for about 0.3 s, **and** depth shows a brick between the fingers. A timeout triggers a re-grasp (at most 2). |
+| D7 | Done signal | Every demo ends at HOME. A stage is done when the arm has left HOME, come back to within a small band of it, and stayed still for about 0.5 s. A timeout triggers a ramped scripted move to HOME. **Spot check:** after `pick`, the spot crop must show a brick (colour/depth blob); if not, run `pick` again (at most 2 times). |
 | D8 | Run path | Studio is used to record, train and export. **Our orchestrator runs the exported models through the `physicalai` runtime Python API** (`RobotRuntime`, `PolicySource.reset()/warmup()`, `SharedCamera`). We don't drive Studio's websocket. |
 | D9 | Training compute | **Modal**, through Studio. **Each participant gets $100 of Modal credit**, and jobs keep billing even with Studio closed. Link it on the laptop as user `intel` with `uvx --python 3.13 --from 'modal[api-proxy-support]>=1.6.3,<2' modal setup`, then use Settings → Training Targets → Modal Provider → Deploy and connect. Pick the GPU per job (A10G is the cheapest that works for ACT). Anomaly models train locally on the XPU, not on Modal. There is no Intel cloud. |
 | D10 | Efficiency | A full device matrix (policy × anomaly × {CPU, GPU, NPU} × {FP32, INT8 weights-only}). Ship the setting with the best task success, then the lowest J/brick. Devices can be switched live. |
@@ -37,7 +51,7 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 | D13 | Cut order (if behind on Sat 18:00) | Cut the data loop first, then the camera-bump demo, then SmolVLA. **Never cut:** ACT pick/place, multi-view Anomalib, the 3D grasp check, the twin with the heatmap, the device benchmarks. |
 | D14 | Team | Marius and the Claude agents write the code. Teammates help with teleop, making defects and filming. |
 | D15 | Bricks | We have fewer than 15. **Photograph every brick clean before marking anything.** Use removable defects so each brick can be both good and defective. |
-| D16 | Conveyor | **Full 40 cm belt**: 2 × 200 mm modules, 100 mm wide, with an end chute into a ~12×12 cm pick tray. A teammate prints it overnight on the venue printers. **Drive:** the Atech 14-port board with a DC-motor module, controlled from the laptop. **Feed:** the belt runs until RealSense depth sees a new brick in the tray, then stops for the pick; it advances during the previous brick's placement. The pick policy also handles bricks on the table (judges may place bricks by hand). **Demos are recorded only after the belt is fixed in place, and never wait past Sat 09:30;** if the belt isn't ready by then, record without it. |
+| D16 | Conveyor | **Dropped for now (Sat 01:00):** the core cell comes first; revisit only if the core loop works on Sat evening. Original idea: **Full 40 cm belt**: 2 × 200 mm modules, 100 mm wide, with an end chute into a ~12×12 cm pick tray. A teammate prints it overnight on the venue printers. **Drive:** the Atech 14-port board with a DC-motor module, controlled from the laptop. **Feed:** the belt runs until RealSense depth sees a new brick in the tray, then stops for the pick; it advances during the previous brick's placement. The pick policy also handles bricks on the table (judges may place bricks by hand). **Demos are recorded only after the belt is fixed in place, and never wait past Sat 09:30;** if the belt isn't ready by then, record without it. |
 | D17 | Tech challenges (stacked on the Intel project) | Ticked on hackjunction.app: **Atech Real World** (the belt drive) and **Best use of Modal** (training). **Best use of CRACI** is ticked only once CI runs on CRACI, after the core works (§15). The final description needs one line for each one. Atech also wants a summary post in its Discord. |
 
 ## 3. Station layout (tape it, photograph it, don't move it)
