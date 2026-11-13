@@ -34,6 +34,7 @@ The cell picks Duplo bricks from a shifted or cluttered pile, inspects each bric
 | D13 | Cut order (if behind on Sat 18:00) | Cut the data loop first, then the camera-bump demo, then SmolVLA. **Never cut:** ACT pick/place, multi-view Anomalib, the 3D grasp check, the twin with the heatmap, the device benchmarks. |
 | D14 | Team | Marius and the Claude agents write the code. Teammates help with teleop, making defects and filming. |
 | D15 | Bricks | We have fewer than 15. **Photograph every brick clean before marking anything.** Use removable defects so each brick can be both good and defective. |
+| D16 | Conveyor | **Full 40 cm belt**: 2 × 200 mm modules, 100 mm wide, with an end chute into a ~12×12 cm pick tray. A teammate prints it overnight on the venue printers. **Drive:** the Atech 14-port board with a DC-motor module, controlled from the laptop. **Feed:** the belt runs until RealSense depth sees a new brick in the tray, then stops for the pick; it advances during the previous brick's placement. The pick policy also handles bricks on the table (judges may place bricks by hand). **Demos are recorded only after the belt is fixed in place, and never wait past Sat 09:30;** if the belt isn't ready by then, record without it. |
 
 ## 3. Station layout (tape it, photograph it, don't move it)
 - **Table zones A–F** (pick area, about 25×20 cm), the **inspection spot**, the **good bowl** and the **defective bowl**, all taped and labelled.
@@ -49,6 +50,12 @@ The cell picks Duplo bricks from a shifted or cluttered pile, inspects each bric
   - **3 taped mount positions for `top`** (P1/P2/P3), used for the demos (D3).
 - **Inspection light:** a lamp or LED panel at a fixed position, with a phone flashlight as fallback. A white card behind the inspection pose. **Exposure and white balance are locked**, never auto.
 - **Hard stop:** the follower's 12 V supply switch is within reach of the safety person.
+- **Conveyor (D16):**
+  - The belt runs across the table depth, about 15–20 cm left of the follower base, from the far edge (infeed) to the pick tray at the follower's front-left.
+  - **The inspection webcam must move out of that strip tonight.** Record the dance poses only after it has moved.
+  - Before fixing anything, tape the footprint. Check with the leader in teleop that the gripper reaches the whole tray, and check that the tray is in the RealSense view.
+  - Plug the Atech board **directly into the laptop, not the hub**.
+  - **Never commit the 3MF/STL files** (MakerWorld "Conveyor Generator", personal-use licence).
 
 ## 4. Architecture
 ```
@@ -68,7 +75,8 @@ The cell picks Duplo bricks from a shifted or cluttered pile, inspects each bric
 ```
 **State machine** (each arrow is a check; failures loop back):
 ```
-IDLE ─[3D: brick on table? pick target zone]→ PICK (ACT pick, reset+warmup)
+FEED: belt on until depth sees a new brick in the tray (overlaps with the previous PLACE) | 15 s → line empty → table zones
+IDLE ─[3D: brick in tray or on table? pick target]→ PICK (ACT pick, reset+warmup)
 PICK ─[D7 done: closed+still+brick-in-gripper]→ INSPECT   | timeout/empty → RE-GRASP (≤2) → IDLE
 INSPECT = scripted dance V2..V6 (+V0 captured pre-pick, V1 wrist close-up)
        → score s = max_v(s_v / thr_v):  s<0.8 GOOD | s>1.2 DEFECT | else RE-PRESENT once → else DEFECT(uncertain)
@@ -112,7 +120,10 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 
 ## 6. Policies and data
 **Demos (about 110, about 2 h of arm time, two operators alternating):**
-- `pick`: 60 = 3 top-camera placements (P1/P2/P3) × 20, spread over zones A–F, about 10 of them in clutter. **Every episode ends cleanly at the lift pose.**
+- `pick`: 60 = 3 top-camera placements (P1/P2/P3) × 20.
+  - About half are from the **belt tray**: random landings and small piles made by running the belt for several bricks.
+  - The other half are from table zones A–F, about 10 of them in clutter.
+  - **Every episode ends cleanly at the lift pose.**
 - `place_good`: 25 and `place_bad`: 25, each starting from the `HOME_INSPECT` pose with a brick in the gripper.
 - **Before every episode, drive both arms home** (otherwise the start pose drifts). Move every joint a bit across the demos: a joint that never moves gets near-zero std and freezes the policy.
 - Task strings and camera names must be **exactly** the same everywhere; a typo creates a new task.
@@ -167,9 +178,11 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 ## 10. Timeline (Helsinki time)
 | When | What |
 |---|---|
-| **Fri → 03:00** | Calibration finished. Studio up; cameras added as `top`/`wrist`/`inspection`; the robot added with "Skip verification". Tape zones, cameras, lamp. **Smoke test:** 5 demos → ACT for about 2k steps on the XPU → OpenVINO export → `physicalai run` moves the arm. Record the dance poses. Modal target connected (Bogdan's credentials). |
-| **Sat 08:00–11:30** | Demos: pick 60 (P1/P2/P3), then place_good 25 and place_bad 25. Upload them and start Modal training (main + curve runs). |
-| Sat 08:00–12:00 (in parallel, the arm is free during uploads) | 3D calibration and checks. Twin. Clean anomaly capture of all bricks, then make defects, then defect capture. |
+| **Fri → 03:00** | Belt prints queued as early as possible (teammate). Follower recalibration (full base sweep), then save a new known-good config. Studio up; cameras added as `top`/`wrist`/`inspection`; the robot added with "Skip verification". Move the inspection webcam out of the belt strip. Tape zones, the belt footprint, cameras, lamp. **Smoke test:** 5 demos → ACT for about 2k steps on the XPU → OpenVINO export → `physicalai run` moves the arm. Record the dance poses. Modal target connected (Bogdan's credentials). Atech toolchain plus belt firmware flashed, motor spin test. |
+| Sat 06:00–08:30 | Belt assembly, motor coupler, belt mounted and fixed in place; `belt.py` feed test. |
+| **Sat 07:00–09:00** | **Clean anomaly capture** of every brick on the arm (the dance doesn't need the belt). Then make the defects and capture them. Calibrate 3D. |
+| **Sat 09:00–12:00** | Demos with the belt fixed (start no later than 09:30, with or without the belt): pick 60 (P1/P2/P3, half from the tray), then place_good 25 and place_bad 25. Upload and start Modal training (main + curve runs). |
+| Sat 09:00–12:00 (agents, in parallel) | 3D checks, twin, per-view anomaly models. |
 | **Sat 12:00** | Intel hands-on session (5th floor). Ask about the NPU for ACT, xpu-smi, Robotics AI Suite pinning, and power measurement. |
 | Sat 12:30–18:00 | Orchestrator integration. First autonomous runs. Failure-driven top-up demos and retrain. Per-view thresholds. |
 | **Sat 18:00** | **Checkpoint:** is the full loop working? Apply the cut order (D13) if not. |
@@ -188,6 +201,7 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 | W4 Orchestrator & safety | `cell/orchestrator.py`, `cell/safety.py`, `cell/devices.py` | state machine, camera discovery by serial, kill/watchdog |
 | W5 Bench | `cell/bench/*`, `results/` | device matrix, power, pinning, evaluation and confusion-matrix scripts |
 | W6 Story | `docs/`, the deck, the video | numbers slide, 2-min video, README |
+| W7 Belt | `belt/` (Atech firmware `project.yaml`), `cell/belt.py`; the teammate does printing and assembly | the belt runs from the laptop; depth-gated feed; bricks/min |
 
 ## 12. What the judges see (rehearse it)
 1. **Live run:** 8–10 mixed bricks (tiny dots in odd places, the held-out defect type), shifted and cluttered, running continuously with live counters.
@@ -203,6 +217,7 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 | A model doesn't compile on the NPU | Smaller coreset, EfficientAD or PaDiM, static shapes. Otherwise iGPU for anomaly, NPU for nothing, and say so honestly. |
 | Policy poor on clutter | 3D picks the most isolated brick zone first. Failure-driven demos. Re-grasp. |
 | Tiny dots missed | Higher-resolution tiles, better light, lower view threshold, the V6 underside view. Report recall per defect type honestly. |
+| Belt late, or failing on demo day | Demos never wait past 09:30. The pick policy is also trained on table zones, so the cell works without the belt. A belt failure while running means the 15 s timeout, then table picks. |
 | USB hub drops | Powered hub. Wrist camera on the main hub. `find_cams.py` after any re-cable. |
 | The laptop gets wiped or returned | Push code often. Back up data and exports to the ThinkPad or cloud. |
 
@@ -232,6 +247,11 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
   - **Teleop:** the "teleop v3" slew limit is LeRobot-side. Studio records with its own teleop, so check that it feels the same before recording.
 - [ ] Before starting Studio: `pgrep -af "teleop|lerobot|camdash"`. Teleop v3 or camdash may still hold the ports and cameras. Ask Marius before killing anything.
 - [ ] Modal credentials from Bogdan → Studio Training Targets → Modal.
+- [ ] **Belt:**
+  - Which port the motor uses: run `atech check` with the board plugged in, then fix `belt/project.yaml` and rebuild.
+  - Does USB alone power the motor rail? If not, get the Power Jack module and a 5–9 V supply from the hardware desk.
+  - Measure the motor shaft (diameter and whether it has a flat) and print a coupler to the sprocket.
+  - Ask Intel (Rajesh/Marvin) whether a conveyor fixture is OK and how the judges will place bricks.
 - [ ] Lamp or LED panel from the Hardware Lab.
 - [ ] Sunplus inspection-camera maximum resolution and fixed focus/exposure (check with `v4l2-ctl`, which isn't installed yet: `sudo apt install v4l-utils`).
 - [ ] Revert the leader wrist_flex Phase flip before returning the laptop (see the RETURN_CHECKLIST).

@@ -22,3 +22,6 @@ intel_install/
 
 # private notes (never commit)
 .private/
+.pio/
+*.3mf
+*.stl
