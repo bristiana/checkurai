@@ -1,0 +1,85 @@
+# The repo checks again, on CRACI runners, for the "Best use of CRACI" tech challenge.
+# CRACI records every package a job downloads and builds an SBOM (CycloneDX) from it.
+# The second job downloads that SBOM and attaches it to the run.
+#
+# Until the CRACI GitHub App is installed on the repo owner's account, the first job
+# stays queued (no runner picks it up). guard.yml keeps running on GitHub's runners,
+# so nothing else is blocked. Setup steps: docs/PLAN.md §15, "CRACI".
+name: craci
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: craci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  craci-guard:
+    runs-on: craci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Tracked files (secrets, personal data, forbidden or big files)
+        run: python tools/repo_guard.py tree
+      - name: Every commit on every branch (incl. noreply author emails)
+        run: |
+          git fetch --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+          python tools/repo_guard.py history
+      - name: Gitleaks secret scan (full history)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sbom:
+    needs: craci-guard
+    if: always() && needs.craci-guard.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Download the CRACI SBOM of the craci-guard job
+        env:
+          CRACI_API_TOKEN: ${{ secrets.CRACI_API_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$CRACI_API_TOKEN" ]; then
+            echo "::notice::The CRACI_API_TOKEN secret is not set, so the SBOM download is skipped."
+            exit 0
+          fi
+          job_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+            --jq '.jobs[] | select(.name == "craci-guard") | .id')
+          repo_q=${GITHUB_REPOSITORY/\//%2F}
+          code=000
+          for attempt in 1 2 3 4 5 6; do
+            code=$(curl -sS -o sbom.cdx.json -w '%{http_code}' \
+              -H "Authorization: Bearer $CRACI_API_TOKEN" \
+              "https://api.craci.com/v1preview1/sbom?provider=github&repo=$repo_q&job_id=$job_id")
+            [ "$code" = 200 ] && break
+            echo "CRACI answered HTTP $code (attempt $attempt), retrying in 10 s"
+            sleep 10
+          done
+          if [ "$code" != 200 ]; then
+            rm -f sbom.cdx.json
+            echo "::error::No SBOM from CRACI (last answer: HTTP $code)"
+            exit 1
+          fi
+          {
+            echo "### CRACI SBOM (job $job_id)"
+            jq -r '"Components: \(.components | length)"' sbom.cdx.json
+            echo
+            echo '| Component | Version |'
+            echo '|---|---|'
+            jq -r '.components[] | "| \(.name) | \(.version // "") |"' sbom.cdx.json | sort -u | head -100
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('sbom.cdx.json') != ''
+        with:
+          name: craci-sbom
+          path: sbom.cdx.json

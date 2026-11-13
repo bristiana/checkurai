@@ -38,6 +38,7 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 | D14 | Team | Marius and the Claude agents write the code. Teammates help with teleop, making defects and filming. |
 | D15 | Bricks | We have fewer than 15. **Photograph every brick clean before marking anything.** Use removable defects so each brick can be both good and defective. |
 | D16 | Conveyor | **Full 40 cm belt**: 2 × 200 mm modules, 100 mm wide, with an end chute into a ~12×12 cm pick tray. A teammate prints it overnight on the venue printers. **Drive:** the Atech 14-port board with a DC-motor module, controlled from the laptop. **Feed:** the belt runs until RealSense depth sees a new brick in the tray, then stops for the pick; it advances during the previous brick's placement. The pick policy also handles bricks on the table (judges may place bricks by hand). **Demos are recorded only after the belt is fixed in place, and never wait past Sat 09:30;** if the belt isn't ready by then, record without it. |
+| D17 | Tech challenges (stacked on the Intel project) | Ticked on hackjunction.app: **Atech Real World** (the belt drive) and **Best use of Modal** (training). **Best use of CRACI** is ticked only once CI runs on CRACI, after the core works (§15). The final description needs one line for each one. Atech also wants a summary post in its Discord. |
 
 ## 3. Station layout (tape it, photograph it, don't move it)
 - **Table zones A–F** (pick area, about 25×20 cm), the **inspection spot**, the **good bowl** and the **defective bowl**, all taped and labelled.
@@ -265,6 +266,15 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
     - Generate the belt's 3MF with the TT-motor drive side.
   - **Speed check:** `dc_motor_speed 255` with no load, count turns in 10 s. Target belt speed is about 4–6 cm/s.
   - Ask Intel (Rajesh/Marvin) whether a conveyor fixture is OK and how the judges will place bricks.
+- [ ] **CRACI (tech challenge "Best use of CRACI"). Do it only after the full loop works (the Sat 18:00 checkpoint in §10 has passed).**
+  - Already in the repo: `.github/workflows/craci.yml`. It runs the same checks as `guard.yml` on `runs-on: craci`, then downloads the SBOM CRACI recorded for that job and attaches it to the run (artifact `craci-sbom`, and a component table in the run summary). `guard.yml` stays on GitHub's runners.
+  - **The repo owner (bristiana) must do these steps, in a browser:**
+    1. Sign up at platform.craci.com. Ask Roope at the CRACI booth (3rd floor, left of the stage) for the Junction onboarding.
+    2. In CRACI, go to Settings → Builds → Install GitHub and install the app on `checkurai`. The docs describe GitHub **organizations**, so ask Roope whether a personal account works. If an org is needed: `gitleaks-action` needs a licence key on org repos, so drop that step from `craci.yml`.
+    3. Create a CRACI API token and save it as the repo secret `CRACI_API_TOKEN` (GitHub → Settings → Secrets and variables → Actions).
+  - **Check:** Actions → craci → Run workflow. `craci-guard` gets a CRACI runner, and `sbom` uploads `craci-sbom`.
+  - **Make the SBOM worth showing:** add a step to `craci-guard` that installs the cell's Python stack (OpenVINO, Anomalib, the `physicalai` runtime). The SBOM then lists everything the internet ships into the robot. Then ask CRACI's API for the job's network trace and vulnerability data.
+  - **Then, on hackjunction.app (CheckurAll):** tick "Best use of CRACI", and replace the CRACI TODO line in the description with what CRACI does for us.
 - [ ] Lamp or LED panel from the Hardware Lab.
 - [ ] Sunplus inspection-camera maximum resolution and fixed focus/exposure (check with `v4l2-ctl`, which isn't installed yet: `sudo apt install v4l-utils`).
 - [ ] Revert the leader wrist_flex Phase flip before returning the laptop (see the RETURN_CHECKLIST).
