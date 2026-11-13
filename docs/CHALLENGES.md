@@ -70,7 +70,7 @@ Legend:
 |---|---|
 | Bogdan | Intel (lead) |
 | Marius | Intel (laptop, code) |
-| Cristiana | _TBD_: shortlist #1 or #2 |
+| Cristiana | **Exa: The Internet Butler** |
 | Quentin | _TBD_ |
 
 Check first that you are not needed for the Intel teleop demos (PLAN.md §10, Sat 09:00–12:00) before you commit to a side challenge.
