@@ -16,6 +16,12 @@ inspection camera, Anomalib decides good/defective, the arm drops them in the ma
 | `teleop.sh` | verify + teleop with reversed joints (`tools/invert.json`) |
 | `tools/camdash.py` | live camera dashboard, see below |
 | `tools/v4lctl.py` | list/set camera controls: `python tools/v4lctl.py /dev/video0 auto_exposure=3` |
+| `anomaly/capture.py` | save inspection-camera images to `data/anomaly/{good,defect}` |
+| `anomaly/train.py` | train PaDiM/PatchCore on the Intel GPU, export to OpenVINO |
+| `anomaly/detect.py` | OpenVINO detector (CPU/GPU/NPU), live mode and `--bench` |
+| `bench/power.py` | package power and temperature logger for the judges |
+
+Setup (Studio, Modal credits, anomaly workflow, scoring): [docs/SETUP.md](docs/SETUP.md).
 
 ## Camera dashboard
 On the Intel laptop: `python tools/camdash.py` (already running in background, log in `logs/camdash.log`).
