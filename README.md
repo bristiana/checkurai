@@ -14,14 +14,32 @@ inspection camera, Anomalib decides good/defective, the arm drops them in the ma
 |---|---|
 | `arm_test.sh` | identify joints, calibrate, verify, teleop |
 | `teleop.sh` | verify + teleop with reversed joints (`tools/invert.json`) |
-| `tools/camdash.py` | live camera dashboard, see below |
+| `camdash.sh` / `tools/camdash.py` | live camera dashboard, see below |
 | `tools/v4lctl.py` | list/set camera controls: `python tools/v4lctl.py /dev/video0 auto_exposure=3` |
 
-## Camera dashboard
-On the Intel laptop: `python tools/camdash.py` (already running in background, log in `logs/camdash.log`).
-From your own laptop: `ssh -N -L 8080:localhost:8080 intel`, then open http://localhost:8080.
-Close the tab before recording with lerobot / Physical AI Studio (cameras are released ~3 s after the last viewer).
-Snapshots are saved to `snapshots/<camera>/`.
+## Camera dashboard (everyone on the team)
+Live view of all 3 cameras + snapshot button.
+
+**1. Make sure it runs** (on the Intel laptop): `bash camdash.sh status` (also `start` / `stop` / `restart`)
+
+**2. Open it from your own laptop** (needs your SSH access to `intel`, ask Marius):
+```
+ssh -N -L 8080:localhost:8080 intel
+```
+Leave that window open, then go to http://localhost:8080. Works the same in PowerShell, macOS and Linux.
+Port 8080 busy on your laptop? Use `-L 8081:localhost:8080` and open http://localhost:8081.
+
+**On the Intel laptop screen itself:** just open http://localhost:8080 (no lag, no Wi-Fi in between).
+
+Notes:
+- Each camera shows `cam X fps · you Y fps · Z ms` (camera rate, frames reaching you, latency). Junction Wi-Fi adds lag.
+- **Close the tab before recording** with lerobot / Physical AI Studio: cameras are released ~3 s after the last viewer leaves.
+- Snapshots are saved to `snapshots/<camera>/` on the Intel laptop.
+- The server only listens on localhost, so it is not exposed to the whole Junction network.
+
+## Docs
+- [docs/CRISTIANA.md](docs/CRISTIANA.md): Romanian beginner guide (concepts, setup, plan)
+- [RETURN_CHECKLIST.md](RETURN_CHECKLIST.md): before returning the laptop
 
 ## Rules
 - One program at a time on the arms; announce on chat first.
