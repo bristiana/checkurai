@@ -75,7 +75,7 @@ La demo-ul final **nimeni nu atinge brațele**. Totul rulează autonom, pe lapto
 ## 3. Ce e configurat
 
 ### Conectarea la laptopul Intel
-De pe laptopul tău: `ssh intel` (configurat în `~/.ssh/config`).
+De pe laptopul tău: `ssh intel` (configurat în `~/.ssh/config`; pe Windows `%USERPROFILE%\.ssh\config`).
 În VS Code: Remote-SSH -> `intel` -> folderul `/home/intel/checkurai`.
 În fiecare terminal nou: `conda activate intel_dev_env`.
 
@@ -98,8 +98,9 @@ Ce vezi: cele 3 camere live, cu `cam X fps · you Y fps · Z ms` (fps-ul camerei
 
 ### Git
 Repo: https://github.com/bristiana/checkurai (privat, al tău)
-- Pe laptopul Intel push-ul merge direct, cu deploy key (doar pentru repo-ul ăsta).
-- Flux: `git pull` -> lucrezi -> `git add -A` -> `git commit -m "..."` -> `git push`
+- **Regulile sunt obligatorii și verificate automat** (hook-uri + CI): vezi [CONTRIBUTING.md](../CONTRIBUTING.md). Pe scurt: fără secrete (tokenuri, parole, chei), fără date personale (emailuri, telefoane, căi personale), fără dataset-uri, modele sau fișiere mari, doar munca noastră de la eveniment.
+- **O singură dată, în fiecare clonă:** `git config core.hooksPath .githooks` și `git config user.email "<id>+<login>@users.noreply.github.com"` (adresa noreply din GitHub → Settings → Emails).
+- Flux: `git pull` -> lucrezi -> `git add <fișiere>` (nu `git add -A`) -> `git commit -m "..."` -> `git push`
 - Toți lucrăm în **același folder** pe laptop, deci împărțiți-vă pe fișiere.
 - **Nu urca dataset-uri sau modele în git** (sunt deja excluse).
 

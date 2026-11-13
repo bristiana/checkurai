@@ -1,0 +1,10 @@
+#!/bin/sh
+# Runs tools/repo_guard.py with the first working Python 3 (skips the Windows Store stub).
+ROOT=$(git rev-parse --show-toplevel)
+for p in python3 python py; do
+  if command -v "$p" >/dev/null 2>&1 && "$p" -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" >/dev/null 2>&1; then
+    exec "$p" "$ROOT/tools/repo_guard.py" "$@"
+  fi
+done
+echo "repo_guard: no Python 3 found, so the check cannot run. Blocked." >&2
+exit 1

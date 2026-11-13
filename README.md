@@ -42,5 +42,7 @@ Notes:
 - [RETURN_CHECKLIST.md](RETURN_CHECKLIST.md): before returning the laptop
 
 ## Rules
+- **Repo rules are enforced** (git hooks + CI): see [CONTRIBUTING.md](CONTRIBUTING.md). Once per clone: `git config core.hooksPath .githooks`.
+- Third-party software and licences: [THIRD_PARTY.md](THIRD_PARTY.md).
 - One program at a time on the arms; announce on chat first.
 - No reboot / system packages without announcing.

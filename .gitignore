@@ -20,8 +20,58 @@ switch-sshd.sh
 switch-sshd.log
 intel_install/
 
-# private notes (never commit)
+# private notes and research (never commit)
 .private/
+
+# secrets / credentials (never commit; see CONTRIBUTING.md)
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*_deploy
+*_deploy.pub
+id_rsa*
+id_ed25519*
+id_ecdsa*
+.modal.toml
+.netrc
+.git-credentials
+credentials.json
+
+# more data / model / media outputs
+exports/
+checkpoints/
+*.safetensors
+*.npz
+*.npy
+*.pkl
+*.parquet
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.zip
+*.tar.gz
+*.7z
+*.log
+
+# build output
 .pio/
+belt/build/
+
+# licence-restricted 3D print files
 *.3mf
 *.stl
+*.step
+*.gcode
+
+# backups / editor files / local machine state
+*.bak
+*.bak-*
+*.orig
+*~
+*.swp
+config-good-*/
+CONFIG_GOOD_PATH
