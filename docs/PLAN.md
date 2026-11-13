@@ -23,7 +23,7 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 | # | Topic | Decision |
 |---|---|---|
 | D1 | What "3D" means | A live 3D twin (Rerun) plus 3D decisions (supervisor checks). Depth is **not** fed into the policy. |
-| D2 | Camera → robot calibration | Automatic, with a brick in the gripper: about 10 poses, brick centroid from RGB-D compared with FK, Kabsch fit. Reject if RMS > 15 mm. Re-runs in about 1 min. |
+| D2 | Camera → robot calibration | **ArUco markers** (4 × DICT_4X4_50, 50 mm, `tools/make_markers.py`) taped at the workspace edges, never under bricks.<br>**Once:** touch each marker centre with the gripper tip in teleop and record the FK positions. A Kabsch fit gives `T_table_base`.<br>**Every frame:** solvePnP on the visible markers gives `T_cam_table` from a single image, so re-calibration after a camera bump is instant. The camera-moved detector is marker reprojection drift above 3 px.<br>**Cross-check:** brick in the gripper (about 10 poses, RGB-D centroid compared with FK); reject if RMS > 15 mm. |
 | D3 | Camera changes | Find cameras by serial or USB name, never by `/dev/videoN`. A "camera moved" detector. 3D re-calibrates automatically. **The policy is trained on 3 top-camera placements, with augmentation.** |
 | D4 | Policy split | ACT `pick` (pick a brick and lift it), then a **scripted** inspection dance, then ACT `place_good` or ACT `place_bad`. SmolVLA with task strings is a stretch goal. |
 | D5 | Inspection | Active multi-view sweep (V0–V6, §5) with a tight crop and its own model per view. Score = max over views of the normalised score. |
@@ -52,7 +52,10 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 
   Camera names must be identical in Studio, the exports and the runtime.
   - **3 taped mount positions for `top`** (P1/P2/P3), used for the demos (D3).
-- **Inspection light:** a lamp or LED panel at a fixed position, with a phone flashlight as fallback. A white card behind the inspection pose. **Exposure and white balance are locked**, never auto.
+- **Pick-area mat:** a plain, matte sheet (grey or white cardboard or paper, no brick colours, no glossy surface) taped under zones A–F and the tray. It removes laptops, cables and hands from the policy's view and gives depth a flat reference.
+- **ArUco markers (D2):** 4 markers at the mat edges, all visible from P1, P2 and P3. Tape them down flat and never move them after the demos start.
+- **Inspection light:** a lamp or LED panel at a fixed position, with a phone flashlight as fallback. **A white card behind the inspection pose, and one under it if the camera sees the table.** **Exposure and white balance are locked**, never auto.
+- **Scene freeze:** the mat, markers, bowls, belt, cameras and lamp are all fixed **before** the real demos. Anything that changes afterwards (moved bowl, new object in view) makes the policy see a scene it was never trained on.
 - **Hard stop:** the follower's 12 V supply switch is within reach of the safety person.
 - **Conveyor (D16):**
   - The belt runs across the table depth, about 15–20 cm left of the follower base, from the far edge (infeed) to the pick tray at the follower's front-left.

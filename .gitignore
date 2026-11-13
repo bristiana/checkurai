@@ -75,3 +75,6 @@ belt/build/
 *.swp
 config-good-*/
 CONFIG_GOOD_PATH
+
+# generated printables
+markers/
