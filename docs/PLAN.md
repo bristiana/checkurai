@@ -239,13 +239,14 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 - **Product:** a per-brick QC record (images, scores, verdict) for traceability. Multi-arm cells. Integration with a factory MES or dashboard.
 
 ## 15. Open items
-- [ ] **Calibration status (from the calibration session, Fri ~23:16):**
+- [x] **Calibration (Sat ~00:13):**
   - **Leader:** recalibrated after the wrist_flex Phase flip.
-  - **Follower: not recalibrated.** Its base was swept through only 172°, against 224° on the leader, so it sits about 27° off mid. Accepted for now.
-  - **Known-good config:** `~/checkurai/config-good-1113-1316/` (copy on the ThinkPad: `junction2026/intel-config-good/`). Its `restore_config.py` has never been run.
-  - **Rule:** any recalibration must happen **before** the real demos. Recalibrating afterwards makes the recorded dataset invalid.
+  - **Follower:** recalibrated with a full base sweep (shoulder_pan 616..3108, about 219°).
+  - **Known-good config:** `~/checkurai/config-good-1113-1421/` (named in `CONFIG_GOOD_PATH`). The older `config-good-1113-1316/` is kept as a fallback.
+  - **Rule:** no more recalibration once the real demos start. Recalibrating afterwards makes the recorded dataset invalid.
   - **Teleop:** the "teleop v3" slew limit is LeRobot-side. Studio records with its own teleop, so check that it feels the same before recording.
-- [ ] Before starting Studio: `pgrep -af "teleop|lerobot|camdash"`. Teleop v3 or camdash may still hold the ports and cameras. Ask Marius before killing anything.
+- [x] Studio is running on the laptop: UI at http://localhost:3000, backend on :7860. Logs are in `~/checkurai/logs/studio-*.log`. From another machine, use `ssh -L 3000:localhost:3000 -L 7860:localhost:7860 intel`.
+- [ ] Before recording in Studio: `pgrep -af "teleop|lerobot|camdash"`. Teleop v3 or camdash may still hold the ports and cameras. Ask Marius before killing anything.
 - [ ] Modal credentials from Bogdan → Studio Training Targets → Modal.
 - [ ] **Belt:**
   - Which port the motor uses: run `atech check` with the board plugged in, then fix `belt/project.yaml` and rebuild.
