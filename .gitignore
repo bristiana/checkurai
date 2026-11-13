@@ -19,3 +19,6 @@ enable-sudo.sh
 switch-sshd.sh
 switch-sshd.log
 intel_install/
+
+# private notes (never commit)
+.private/
