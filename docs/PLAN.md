@@ -249,8 +249,14 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 - [ ] Modal credentials from Bogdan → Studio Training Targets → Modal.
 - [ ] **Belt:**
   - Which port the motor uses: run `atech check` with the board plugged in, then fix `belt/project.yaml` and rebuild.
-  - Does USB alone power the motor rail? If not, get the Power Jack module and a 5–9 V supply from the hardware desk.
-  - Measure the motor shaft (diameter and whether it has a flat) and print a coupler to the sprocket.
+  - **USB alone does not power the motor rail.**
+    - Get the **Power Jack module** (or USB-C PD) plus a supply from the hardware desk.
+    - Ask the Atech people for the motor's rated voltage before going above about 6–9 V. Never go above 12 V.
+    - The power module needs no `project.yaml` entry, and its port stays unused.
+  - The motor is part of the module: shaft Ø3 mm, 8.8 mm long, about 10 mm above the board.
+    - Use an edge port. The board sits on a printed cradle beside the belt's drive end, with a coupler from 3 mm to the TT double-D.
+    - Generate the belt's 3MF with the TT-motor drive side.
+  - **Speed check:** `dc_motor_speed 255` with no load, count turns in 10 s. Target belt speed is about 4–6 cm/s.
   - Ask Intel (Rajesh/Marvin) whether a conveyor fixture is OK and how the judges will place bricks.
 - [ ] Lamp or LED panel from the Hardware Lab.
 - [ ] Sunplus inspection-camera maximum resolution and fixed focus/exposure (check with `v4l2-ctl`, which isn't installed yet: `sudo apt install v4l-utils`).
