@@ -7,12 +7,15 @@ This is the team's working plan. Every person and agent works from it. If a deci
 ## 1. Goal and how it's scored
 The cell picks Duplo bricks from a shifted or cluttered pile, inspects each brick from every side (tiny marker dots in odd places included), and drops it in the good or defective bowl, fully autonomously. It runs on the Intel laptop using the Physical AI Studio → OpenVINO Physical AI runtime pipeline.
 
-| Criterion | Weight | What earns it here |
+Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junction2026` branch of the Studio repo).
+
+| Criterion | Points | What earns it here |
 |---|---|---|
-| Task success | 30% | Multi-view inspection. A 3D grasp check with automatic re-grasp. Robustness to clutter, shifted bricks and moved cameras. Measured accuracy, cycle time and a confusion matrix. |
-| Intel integration | 30% | Studio record → train (Modal) → export. `physicalai` runtime API, `SharedCamera`, `RerunCallback`. OpenVINO on CPU, iGPU and NPU, with a live device switch. NNCF INT8. |
-| Dataset & pipeline | 20% | About 110 clean demos across 3 camera poses. Arms homed before every episode, every episode ended cleanly. A demos-vs-success curve. A self-improving data loop. |
-| Efficiency | 20% | A device matrix. Pinning the policy to P-cores. Package power (RAPL), joules per brick, temperature, cycle time p95. |
+| Task success | 25 | Multi-view inspection. A 3D grasp check with automatic re-grasp. Robustness to clutter, shifted bricks and moved cameras. Measured accuracy, cycle time and a confusion matrix. |
+| Intel integration | 25 | Studio record → train (Modal) → export. `physicalai` runtime API, `SharedCamera`, `RerunCallback`. OpenVINO on CPU, iGPU and NPU, with a live device switch. NNCF INT8. The judges also name the **Robotics AI Suite**, so ask about it at the Intel session. |
+| Dataset & pipeline | 20 | About 110 clean demos across 3 camera poses. Arms homed before every episode, every episode ended cleanly. A demos-vs-success curve. A self-improving data loop. |
+| Efficiency | 20 | A device matrix. Pinning the policy to P-cores. Package power (RAPL), joules per brick, temperature, cycle time p95. |
+| Creativity | 10 | The 3D twin with the defect heatmap, the camera-bump recovery, active multi-view inspection, and the conveyor feed. |
 
 **Hard rule from Intel:** the cell must run on the Intel station laptop and use Intel's Physical AI software. A cell built only on LeRobot, or run on our own laptops, doesn't count.
 
@@ -27,9 +30,9 @@ The cell picks Duplo bricks from a shifted or cluttered pile, inspects each bric
 | D6 | Uncertain bricks | Re-present at a new angle once. If still uncertain, it goes to the **defective bowl** (fail-safe) and is logged as `uncertain→reject`. A third "review" spot is a stretch goal. |
 | D7 | Done signal | Pose + 3D: gripper closed, arm near the lift pose and still for about 0.3 s, **and** depth shows a brick between the fingers. A timeout triggers a re-grasp (at most 2). |
 | D8 | Run path | Studio is used to record, train and export. **Our orchestrator runs the exported models through the `physicalai` runtime Python API** (`RobotRuntime`, `PolicySource.reset()/warmup()`, `SharedCamera`). We don't drive Studio's websocket. |
-| D9 | Training compute | **Modal**, through Studio (Settings → Training Targets → Modal Provider → Deploy and connect). Bogdan provides the credentials. The local Arc B390 (XPU) is only for the smoke test. There is no Intel cloud. |
+| D9 | Training compute | **Modal**, through Studio. **Each participant gets $100 of Modal credit**, and jobs keep billing even with Studio closed. Link it on the laptop as user `intel` with `uvx --python 3.13 --from 'modal[api-proxy-support]>=1.6.3,<2' modal setup`, then use Settings → Training Targets → Modal Provider → Deploy and connect. Pick the GPU per job (A10G is the cheapest that works for ACT). Anomaly models train locally on the XPU, not on Modal. There is no Intel cloud. |
 | D10 | Efficiency | A full device matrix (policy × anomaly × {CPU, GPU, NPU} × {FP32, INT8 weights-only}). Ship the setting with the best task success, then the lowest J/brick. Devices can be switched live. |
-| D11 | Arm calibration | The LeRobot calibration on the servo EEPROM is the master. **In Studio's SO-101 wizard, always pick "Skip verification"** (it reads the calibration from the board). Never run Studio's calibration step: it rewrites the homing offsets. |
+| D11 | Arm calibration | The LeRobot calibration on the servo EEPROM is the master. Arms are registered in Studio by `tools/studio_setup.py`, by USB serial and with our calibration JSON, so Studio uses those values as-is and never runs its wizard. If you ever add an arm in the UI, pick **"Skip verification"**. Never run Studio's calibration step: it rewrites the homing offsets. |
 | D12 | Safety | Soft stop: joint and velocity clamps, a workspace box checked against the twin, a watchdog that turns torque off, and the spacebar kill on the dashboard. **Hard stop: one person sits at the follower's 12 V switch during every autonomous run.** |
 | D13 | Cut order (if behind on Sat 18:00) | Cut the data loop first, then the camera-bump demo, then SmolVLA. **Never cut:** ACT pick/place, multi-view Anomalib, the 3D grasp check, the twin with the heatmap, the device benchmarks. |
 | D14 | Team | Marius and the Claude agents write the code. Teammates help with teleop, making defects and filming. |
@@ -178,7 +181,7 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 ## 10. Timeline (Helsinki time)
 | When | What |
 |---|---|
-| **Fri → 03:00** | Belt prints queued as early as possible (teammate). Follower recalibration (full base sweep), then save a new known-good config. Studio up; cameras added as `top`/`wrist`/`inspection`; the robot added with "Skip verification". Move the inspection webcam out of the belt strip. Tape zones, the belt footprint, cameras, lamp. **Smoke test:** 5 demos → ACT for about 2k steps on the XPU → OpenVINO export → `physicalai run` moves the arm. Record the dance poses. Modal target connected (Bogdan's credentials). Atech toolchain plus belt firmware flashed, motor spin test. |
+| **Fri → 03:00** | Belt prints queued as early as possible (teammate). Follower recalibration (full base sweep), then save a new known-good config. Studio up; cameras added as `top`/`wrist`/`inspection`; the robot added with "Skip verification". Move the inspection webcam out of the belt strip. Tape zones, the belt footprint, cameras, lamp. **Smoke test:** 5 demos → ACT for about 2k steps on the XPU → OpenVINO export → `physicalai run` moves the arm. Record the dance poses. Modal target connected (`modal setup` with one teammate's $100 credit). Atech toolchain plus belt firmware flashed, motor spin test. |
 | Sat 06:00–08:30 | Belt assembly, motor coupler, belt mounted and fixed in place; `belt.py` feed test. |
 | **Sat 07:00–09:00** | **Clean anomaly capture** of every brick on the arm (the dance doesn't need the belt). Then make the defects and capture them. Calibrate 3D. |
 | **Sat 09:00–12:00** | Demos with the belt fixed (start no later than 09:30, with or without the belt): pick 60 (P1/P2/P3, half from the tray), then place_good 25 and place_bad 25. Upload and start Modal training (main + curve runs). |
@@ -213,7 +216,7 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
 | Risk | Mitigation |
 |---|---|
 | Studio or runtime export path breaks | Smoke test tonight. Keep the exported bundle and its README command. |
-| Modal credentials or quota | Fall back to ACT on the local XPU (about 50 min per model; it blocks the laptop). |
+| Modal credit runs out | Switch to another teammate's Modal account (each has $100), or fall back to ACT on the local XPU (about 50 min per model; it blocks the laptop). |
 | A model doesn't compile on the NPU | Smaller coreset, EfficientAD or PaDiM, static shapes. Otherwise iGPU for anomaly, NPU for nothing, and say so honestly. |
 | Policy poor on clutter | 3D picks the most isolated brick zone first. Failure-driven demos. Re-grasp. |
 | Tiny dots missed | Higher-resolution tiles, better light, lower view threshold, the V6 underside view. Report recall per defect type honestly. |
@@ -247,7 +250,10 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
   - **Teleop:** the "teleop v3" slew limit is LeRobot-side. Studio records with its own teleop, so check that it feels the same before recording.
 - [x] Studio is running on the laptop: UI at http://localhost:3000, backend on :7860. Logs are in `~/checkurai/logs/studio-*.log`. From another machine, use `ssh -L 3000:localhost:3000 -L 7860:localhost:7860 intel`.
 - [ ] Before recording in Studio: `pgrep -af "teleop|lerobot|camdash"`. Teleop v3 or camdash may still hold the ports and cameras. Ask Marius before killing anything.
-- [ ] Modal credentials from Bogdan → Studio Training Targets → Modal.
+- [x] Studio station registered (`tools/studio_setup.py`): project `CheckurAI`, cameras `top` (RealSense, color 640×480@30), `wrist` and `inspection`, both arms online, environment `pick` = top + wrist, dataset `smoke-pick`.
+- [ ] Modal: run `modal setup` on the laptop with one teammate's account (each has $100), then Deploy and connect.
+- [ ] Hugging Face read-only token in Studio Settings → General → Hugging Face (needed for SmolVLA weights).
+- [ ] Inspection: also try **FoundAD** (the guide calls it better for few-shot) next to PatchCore, since we have fewer than 15 bricks.
 - [ ] **Belt:**
   - Which port the motor uses: run `atech check` with the board plugged in, then fix `belt/project.yaml` and rebuild.
   - **USB alone does not power the motor rail.**
