@@ -1,0 +1,21 @@
+# runtime output
+logs/
+snapshots/
+*.out
+__pycache__/
+*.pyc
+# datasets / models (too big for git; back them up separately)
+data/
+datasets/
+outputs/
+models/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.bin
+# laptop admin scripts and Intel install bundle (not project code)
+enable-sudo.sh
+switch-sshd.sh
+switch-sshd.log
+intel_install/
