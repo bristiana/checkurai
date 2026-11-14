@@ -1,0 +1,41 @@
+{
+ "joints": [
+  "shoulder_pan",
+  "shoulder_lift",
+  "elbow_flex",
+  "wrist_flex",
+  "wrist_roll",
+  "gripper"
+ ],
+ "home": [
+  2.852,
+  -99.056,
+  18.343,
+  97.726,
+  0.142,
+  4.414
+ ],
+ "tolerance": [
+  6.0,
+  6.0,
+  6.631,
+  6.0,
+  6.0,
+  7.352
+ ],
+ "source": {
+  "dataset": "63dab1ab-2e23-49fc-8028-b8d8d1af9281",
+  "episodes": 20,
+  "fps": 30.0,
+  "edge_frames": 15,
+  "spread_p95": [
+   2.451,
+   0.169,
+   3.315,
+   0.667,
+   2.901,
+   3.676
+  ],
+  "learned_at": "2026-11-13T17:01:49"
+ }
+}
