@@ -1,0 +1,13 @@
+{
+ "pixel_thr": 35.0,
+ "frac_thr": 0.00875,
+ "eval": {
+  "empty_n": 18,
+  "empty_correct": 1.0,
+  "brick_n": 193,
+  "brick_correct": 1.0
+ },
+ "empty_frac_max": 0.00148,
+ "brick_frac_min": 0.05152,
+ "method": "reference = median of half the empty crops; the other half + every brick photo are the test"
+}

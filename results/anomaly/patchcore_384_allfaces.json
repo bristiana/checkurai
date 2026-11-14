@@ -1,0 +1,173 @@
+{
+ "name": "patchcore_384_allfaces",
+ "model": "patchcore",
+ "image_size": 384,
+ "normal_dirs": [
+  "train_good",
+  "good_other"
+ ],
+ "train_seconds": 614.5,
+ "counts": {
+  "calib_good": 15,
+  "test_good": 12,
+  "defect": 56
+ },
+ "auroc_heldout_good_vs_defect": 0.8962,
+ "auroc_test_good_vs_defect": 0.8765,
+ "threshold": {
+  "low": 49.0466423034668,
+  "high": 58.35340118408203,
+  "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+  "low_from": "max score of the calibration good photos",
+  "high_from": "low + (low - median calibration good score)"
+ },
+ "confusion_at_low": {
+  "defect_as_defect": 35,
+  "defect_as_good": 21,
+  "good_as_defect": 2,
+  "good_as_good": 10
+ },
+ "in_band": {
+  "test_good": 2,
+  "defect": 26
+ },
+ "recall_per_type": {
+  "tape": {
+   "n": 20,
+   "recall": 0.9,
+   "auroc": 0.9833
+  },
+  "marker_line": {
+   "n": 19,
+   "recall": 0.579,
+   "auroc": 0.9357
+  },
+  "marker_dot": {
+   "n": 17,
+   "recall": 0.353,
+   "auroc": 0.7495
+  }
+ },
+ "good_other_flagged": null,
+ "scores": {
+  "calib_good": [
+   38.5531,
+   39.7399,
+   44.5911,
+   42.0556,
+   49.0466,
+   38.6918,
+   36.468,
+   48.03,
+   40.6746,
+   40.9423,
+   40.2766,
+   35.549,
+   34.8529,
+   38.0679,
+   38.452
+  ],
+  "test_good": [
+   33.2206,
+   44.5698,
+   49.5562,
+   52.6013,
+   25.48,
+   36.5035,
+   43.9574,
+   45.6589,
+   34.3056,
+   39.8389,
+   26.3413,
+   22.2225
+  ],
+  "defect": {
+   "tape": [
+    55.3866,
+    56.3655,
+    54.6837,
+    48.7962,
+    50.5287,
+    56.2255,
+    52.3452,
+    53.9017,
+    47.6979,
+    57.8309,
+    60.3164,
+    56.8814,
+    66.063,
+    59.959,
+    59.3558,
+    62.9926,
+    64.5316,
+    59.4919,
+    58.0253,
+    62.1968
+   ],
+   "marker_line": [
+    49.8168,
+    52.7427,
+    52.9887,
+    53.919,
+    48.7748,
+    48.9348,
+    54.8071,
+    52.7374,
+    52.5482,
+    50.6931,
+    50.08,
+    51.7913,
+    47.1264,
+    47.185,
+    48.9226,
+    47.9081,
+    47.5211,
+    48.189,
+    53.6115
+   ],
+   "marker_dot": [
+    40.9395,
+    41.6912,
+    47.0001,
+    41.9541,
+    45.4026,
+    43.8729,
+    37.1869,
+    39.6847,
+    38.7134,
+    42.3383,
+    38.7337,
+    55.4122,
+    53.3806,
+    51.2751,
+    50.0993,
+    55.6854,
+    59.5544
+   ]
+  }
+ },
+ "anomaly_peak_on_brick": {
+  "good": "24/27",
+  "tape": "20/20",
+  "marker_line": "19/19",
+  "marker_dot": "17/17"
+ },
+ "latency": {
+  "CPU": {
+   "ok": true,
+   "median_ms": 1086.04,
+   "p90_ms": 1110.9,
+   "compile_s": 1.9
+  },
+  "GPU": {
+   "ok": true,
+   "median_ms": 202.43,
+   "p90_ms": 237.06,
+   "compile_s": 2.8
+  },
+  "NPU": {
+   "ok": false,
+   "error": "Exception from src/inference/src/cpp/core.cpp:117:"
+  }
+ }
+}

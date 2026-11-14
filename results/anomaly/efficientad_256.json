@@ -1,0 +1,177 @@
+{
+ "name": "efficientad_256",
+ "model": "efficientad",
+ "image_size": 256,
+ "normal_dirs": [
+  "train_good"
+ ],
+ "train_seconds": 1187.9,
+ "counts": {
+  "calib_good": 15,
+  "test_good": 12,
+  "defect": 56
+ },
+ "auroc_heldout_good_vs_defect": 0.6772,
+ "auroc_test_good_vs_defect": 0.8065,
+ "threshold": {
+  "low": 0.4226902723312378,
+  "high": 0.7581628486514091,
+  "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+  "low_from": "max score of the calibration good photos",
+  "high_from": "low + (low - median calibration good score)"
+ },
+ "confusion_at_low": {
+  "defect_as_defect": 0,
+  "defect_as_good": 56,
+  "good_as_defect": 0,
+  "good_as_good": 12
+ },
+ "in_band": {
+  "test_good": 0,
+  "defect": 0
+ },
+ "recall_per_type": {
+  "tape": {
+   "n": 20,
+   "recall": 0.0,
+   "auroc": 0.6407
+  },
+  "marker_line": {
+   "n": 19,
+   "recall": 0.0,
+   "auroc": 0.6959
+  },
+  "marker_dot": {
+   "n": 17,
+   "recall": 0.0,
+   "auroc": 0.6993
+  }
+ },
+ "good_other_flagged": {
+  "n": 43,
+  "flagged": 9
+ },
+ "scores": {
+  "calib_good": [
+   0.0953,
+   0.0867,
+   0.4227,
+   0.0371,
+   0.0621,
+   0.091,
+   0.0934,
+   0.1885,
+   0.1288,
+   0.0387,
+   0.1246,
+   0.0872,
+   0.0567,
+   0.0636,
+   0.0696
+  ],
+  "test_good": [
+   0.08,
+   0.0683,
+   0.0484,
+   0.0734,
+   0.0537,
+   0.0441,
+   0.0414,
+   0.0565,
+   0.0745,
+   0.0669,
+   0.0535,
+   0.0616
+  ],
+  "defect": {
+   "tape": [
+    0.1508,
+    0.1055,
+    0.0972,
+    0.1014,
+    0.1004,
+    0.1215,
+    0.0967,
+    0.0763,
+    0.0516,
+    0.1002,
+    0.0999,
+    0.0871,
+    0.2259,
+    0.0822,
+    0.0574,
+    0.0604,
+    0.0475,
+    0.0533,
+    0.0495,
+    0.0904
+   ],
+   "marker_line": [
+    0.1628,
+    0.223,
+    0.0576,
+    0.069,
+    0.2375,
+    0.2539,
+    0.174,
+    0.0635,
+    0.0647,
+    0.0501,
+    0.0653,
+    0.0544,
+    0.0521,
+    0.2296,
+    0.2577,
+    0.1439,
+    0.2126,
+    0.3082,
+    0.1424
+   ],
+   "marker_dot": [
+    0.1318,
+    0.1817,
+    0.133,
+    0.0565,
+    0.0716,
+    0.2059,
+    0.0765,
+    0.1017,
+    0.1185,
+    0.2808,
+    0.1155,
+    0.0926,
+    0.0651,
+    0.0871,
+    0.0651,
+    0.0781,
+    0.0463
+   ]
+  }
+ },
+ "anomaly_peak_on_brick": {
+  "good": "5/27",
+  "tape": "11/20",
+  "marker_line": "16/19",
+  "marker_dot": "9/17"
+ },
+ "latency": {
+  "CPU": {
+   "ok": true,
+   "median_ms": 283.9,
+   "p90_ms": 285.61,
+   "compile_s": 0.1
+  },
+  "GPU": {
+   "ok": true,
+   "median_ms": 8.47,
+   "p90_ms": 18.87,
+   "compile_s": 1.2
+  },
+  "NPU": {
+   "ok": true,
+   "median_ms": 9.81,
+   "p90_ms": 11.09,
+   "compile_s": 2.2
+  }
+ }
+}

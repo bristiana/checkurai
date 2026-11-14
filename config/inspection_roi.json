@@ -1,0 +1,16 @@
+{
+  "x": 668,
+  "y": 218,
+  "size": 652,
+  "frame": [
+    1920,
+    1080
+  ],
+  "made_from": "union of 150 brick boxes (good + defect) + 24px margin",
+  "brick_box_union": [
+    692,
+    262,
+    1296,
+    826
+  ]
+}
