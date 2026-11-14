@@ -12,7 +12,7 @@
   -99.056,
   18.343,
   97.726,
-  -49.858,
+  0.0,
   4.414
  ],
  "tolerance": [
@@ -37,15 +37,7 @@
    3.676
   ],
   "learned_at": "2026-11-13T17:01:49",
-  "note": "Sat 14 Nov: wrist_roll turned -50 (about 90 deg) after the wrist-camera holder was replaced; re-learn from the new demos",
-  "changed_at": "2026-11-13T18:37:35"
- },
- "previous_home": [
-  2.852,
-  -99.056,
-  18.343,
-  97.726,
-  0.142,
-  4.414
- ]
+  "note": "Sat 14 Nov: wrist_roll joint ranges changed (follower ticks 0-2048, leader 1024-3072) so the follower wrist sits 90 deg turned when the leader wrist is straight; roll 0 = that pose, +-100 = +-90 deg. Old datasets used the full-turn range; re-learn HOME from the new demos",
+  "changed_at": "2026-11-13T18:41:40"
+ }
 }
