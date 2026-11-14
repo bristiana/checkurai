@@ -9,12 +9,12 @@
  "backend": "openvino",
  "device": "GPU",
  "hz": 30,
- "execution": "sync",
+ "execution": "async",
  "request_threshold": 0.5,
  "grace_s": 3.0,
  "stage_timeout": 40,
  "start_timeout": 10,
- "anomaly_model": "patchcore_384",
+ "anomaly_model": "patchcore_bricktight_384",
  "anomaly_device": "GPU",
- "frames": 9
+ "frames": 5
 }
