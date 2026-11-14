@@ -12,7 +12,7 @@
   -99.056,
   18.343,
   97.726,
-  0.142,
+  50.142,
   4.414
  ],
  "tolerance": [
@@ -36,6 +36,16 @@
    2.901,
    3.676
   ],
-  "learned_at": "2026-11-13T17:01:49"
- }
+  "learned_at": "2026-11-13T17:01:49",
+  "note": "Sat 14 Nov: wrist_roll turned +50 (about 90 deg) after the wrist-camera holder was replaced; re-learn from the new demos",
+  "changed_at": "2026-11-13T18:36:37"
+ },
+ "previous_home": [
+  2.852,
+  -99.056,
+  18.343,
+  97.726,
+  0.142,
+  4.414
+ ]
 }
