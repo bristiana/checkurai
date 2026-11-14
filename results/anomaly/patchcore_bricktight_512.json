@@ -1,0 +1,193 @@
+{
+ "name": "patchcore_bricktight_512",
+ "model": "patchcore",
+ "image_size": 512,
+ "normal_dirs": [
+  "train_good"
+ ],
+ "train_seconds": 637.3,
+ "counts": {
+  "calib_good": 15,
+  "test_good": 12,
+  "defect": 56
+ },
+ "auroc_heldout_good_vs_defect": 0.9683,
+ "auroc_test_good_vs_defect": 0.9702,
+ "threshold": {
+  "low": 58.497215270996094,
+  "high": 66.41573333740234,
+  "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+  "low_from": "max score of the calibration good photos",
+  "high_from": "low + (low - median calibration good score)"
+ },
+ "confusion_at_low": {
+  "defect_as_defect": 49,
+  "defect_as_good": 7,
+  "good_as_defect": 0,
+  "good_as_good": 12
+ },
+ "in_band": {
+  "test_good": 0,
+  "defect": 29
+ },
+ "recall_per_type": {
+  "tape": {
+   "n": 20,
+   "recall": 0.9,
+   "auroc": 0.9963
+  },
+  "marker_line": {
+   "n": 19,
+   "recall": 1.0,
+   "auroc": 1.0
+  },
+  "marker_dot": {
+   "n": 17,
+   "recall": 0.706,
+   "auroc": 0.8998
+  }
+ },
+ "good_other_flagged": {
+  "n": 43,
+  "flagged": 39
+ },
+ "scores": {
+  "calib_good": [
+   45.9816,
+   48.0568,
+   52.7358,
+   51.6394,
+   54.8547,
+   46.3745,
+   45.8378,
+   52.707,
+   48.1408,
+   48.5355,
+   51.9187,
+   55.747,
+   48.3774,
+   50.5787,
+   58.4972
+  ],
+  "test_good": [
+   45.5334,
+   48.631,
+   53.8227,
+   55.4651,
+   34.4914,
+   43.9126,
+   54.6198,
+   52.5698,
+   50.5006,
+   54.4597,
+   42.8387,
+   40.8327
+  ],
+  "defect": {
+   "tape": [
+    58.1015,
+    60.3906,
+    61.1319,
+    60.0031,
+    60.2442,
+    60.2053,
+    55.9107,
+    59.4708,
+    61.7027,
+    65.4951,
+    60.2492,
+    58.6434,
+    63.4749,
+    62.5752,
+    65.5122,
+    64.2075,
+    69.5737,
+    66.406,
+    64.9581,
+    63.1213
+   ],
+   "marker_line": [
+    72.6251,
+    76.195,
+    71.2135,
+    70.2258,
+    65.0667,
+    68.2541,
+    67.5555,
+    67.3317,
+    66.5381,
+    64.7924,
+    65.8802,
+    67.5847,
+    65.1866,
+    73.0198,
+    67.9879,
+    67.0277,
+    62.3751,
+    70.4648,
+    68.8769
+   ],
+   "marker_dot": [
+    61.6592,
+    63.3294,
+    65.5583,
+    63.7384,
+    65.1038,
+    62.0252,
+    57.6356,
+    48.6938,
+    50.5239,
+    52.9909,
+    51.8178,
+    73.2266,
+    72.3679,
+    65.177,
+    75.2046,
+    73.3217,
+    70.3568
+   ]
+  }
+ },
+ "policy_uncertain_is_defect": {
+  "false_alarm_rate_test": "0/12",
+  "false_alarm_rate_2fold": "2/27",
+  "recall_2fold": {
+   "tape": 0.95,
+   "marker_line": 1.0,
+   "marker_dot": 0.735
+  },
+  "recall_all_2fold": 0.902
+ },
+ "crop": {
+  "mode": "brick",
+  "side": null,
+  "margin": 24,
+  "empty_ref": "empty_ref.png",
+  "window_side_median": 265,
+  "no_brick_found_whole_roi": 0
+ },
+ "anomaly_peak_on_brick": {
+  "good": "16/27",
+  "tape": "20/20",
+  "marker_line": "19/19",
+  "marker_dot": "16/17"
+ },
+ "latency": {
+  "CPU": {
+   "ok": true,
+   "median_ms": 1847.98,
+   "p90_ms": 1867.55,
+   "compile_s": 2.2
+  },
+  "GPU": {
+   "ok": true,
+   "median_ms": 833.15,
+   "p90_ms": 934.01,
+   "compile_s": 2.8
+  },
+  "NPU": {
+   "ok": false,
+   "error": "Exception from src/inference/src/cpp/core.cpp:117:"
+  }
+ }
+}

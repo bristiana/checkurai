@@ -1,0 +1,175 @@
+{
+ "name": "patchcore_brick371_384",
+ "model": "patchcore",
+ "image_size": 384,
+ "normal_dirs": [
+  "train_good"
+ ],
+ "train_seconds": 223.8,
+ "counts": {
+  "calib_good": 15,
+  "test_good": 12,
+  "defect": 56
+ },
+ "auroc_heldout_good_vs_defect": 0.922,
+ "auroc_test_good_vs_defect": 0.9182,
+ "threshold": {
+  "low": 53.17375946044922,
+  "high": 61.02375030517578,
+  "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+  "low_from": "max score of the calibration good photos",
+  "high_from": "low + (low - median calibration good score)"
+ },
+ "confusion_at_low": {
+  "defect_as_defect": 48,
+  "defect_as_good": 8,
+  "good_as_defect": 3,
+  "good_as_good": 9
+ },
+ "in_band": {
+  "test_good": 3,
+  "defect": 19
+ },
+ "recall_per_type": {
+  "tape": {
+   "n": 20,
+   "recall": 1.0,
+   "auroc": 0.9852
+  },
+  "marker_line": {
+   "n": 19,
+   "recall": 1.0,
+   "auroc": 0.9864
+  },
+  "marker_dot": {
+   "n": 17,
+   "recall": 0.529,
+   "auroc": 0.7756
+  }
+ },
+ "good_other_flagged": {
+  "n": 43,
+  "flagged": 43
+ },
+ "scores": {
+  "calib_good": [
+   42.3884,
+   44.8424,
+   50.0268,
+   44.6361,
+   47.8875,
+   46.092,
+   47.0149,
+   53.1738,
+   46.4496,
+   47.6559,
+   44.7373,
+   40.7668,
+   42.4935,
+   44.7076,
+   45.3238
+  ],
+  "test_good": [
+   36.5565,
+   43.1768,
+   53.5016,
+   60.1581,
+   32.1039,
+   41.6509,
+   56.7428,
+   51.3559,
+   38.7757,
+   43.068,
+   35.0012,
+   33.1777
+  ],
+  "defect": {
+   "tape": [
+    63.0091,
+    70.6703,
+    67.7283,
+    68.3997,
+    67.2822,
+    58.9818,
+    55.5439,
+    56.3929,
+    58.3427,
+    59.7959,
+    65.8551,
+    60.0752,
+    70.3938,
+    63.9101,
+    69.8252,
+    67.1795,
+    71.686,
+    64.4688,
+    65.6378,
+    62.0878
+   ],
+   "marker_line": [
+    63.2603,
+    68.9539,
+    63.8723,
+    63.4623,
+    61.7579,
+    60.6089,
+    66.649,
+    62.9535,
+    56.9078,
+    59.3764,
+    60.572,
+    59.5265,
+    58.7594,
+    59.0374,
+    58.3956,
+    60.4834,
+    61.27,
+    59.8877,
+    64.2887
+   ],
+   "marker_dot": [
+    55.7367,
+    55.1937,
+    52.5102,
+    51.7011,
+    50.5549,
+    55.6746,
+    41.9265,
+    43.4922,
+    42.1162,
+    45.2258,
+    44.0301,
+    69.6828,
+    66.5947,
+    69.7837,
+    67.9793,
+    69.103,
+    70.1771
+   ]
+  }
+ },
+ "policy_uncertain_is_defect": {
+  "false_alarm_rate_test": "3/12",
+  "false_alarm_rate_2fold": "3/27",
+  "recall_2fold": {
+   "tape": 0.85,
+   "marker_line": 0.816,
+   "marker_dot": 0.441
+  },
+  "recall_all_2fold": 0.714
+ },
+ "crop": {
+  "mode": "brick",
+  "side": 371,
+  "margin": 24,
+  "empty_ref": "empty_ref.png",
+  "window_side_median": 371,
+  "no_brick_found_whole_roi": 0
+ },
+ "anomaly_peak_on_brick": {
+  "good": "23/27",
+  "tape": "20/20",
+  "marker_line": "19/19",
+  "marker_dot": "17/17"
+ }
+}

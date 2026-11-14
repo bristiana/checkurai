@@ -5,7 +5,10 @@ Data: data/inspection/{good,defect,empty,good_other}/*.jpg from tools/capture_in
 
     python tools/anomaly_train.py roi        # fixed square ROI -> config/inspection_roi.json
     python tools/anomaly_train.py prepare    # ROI crops + per-brick split -> data/inspection_crops/
-    python tools/anomaly_train.py train --model patchcore --size 384
+    python tools/anomaly_train.py prepare-brick --side 0    # tight brick crops -> data/inspection_crops_bricktight/
+    python tools/anomaly_train.py prepare-brick --side -1   # fixed-side brick crops (side fits every brick)
+    python tools/anomaly_train.py train --model patchcore --crops bricktight --size 384
+    python tools/anomaly_train.py train --model patchcore --size 384      # whole fixed ROI (v1)
     python tools/anomaly_train.py train --model patchcore --size 384 --all-faces
     python tools/anomaly_train.py train --model efficientad --size 256 --steps 2000
     python tools/anomaly_train.py eval --name patchcore_384     # scores, threshold + band, latency CPU/GPU/NPU
@@ -20,8 +23,16 @@ calibration good photos only; the test good + defect photos are only used for th
 
 Threshold: low = highest calibration good score, high = low + (low - median calibration good score).
 score < low -> good; score >= high -> defect; in between -> re-inspect, and if it is still >= low, defect.
+Policy: an uncertain brick goes to the defect bowl, so the reported recall / false alarms count every
+score >= low as defect. Eval also swaps calibration and test (2 folds) so all 27 held-out goods count.
 Caveat: all good photos come from one capture session and all defect photos from a later one, so part of
 the gap can be scene drift; eval also checks that the anomaly-map peak lies on the brick.
+
+Brick crops: the brick is the largest blob that differs from the empty-spot reference inside the ROI;
+"tight" = its box plus a margin (each brick fills the model input), a fixed side keeps one scale. The
+exported model carries the crop settings and the reference, so AnomalyScorer still takes the ROI crop.
+The photos are single shots about 3 s apart with the brick moved each time (median 64 px), so there are
+no bursts to measure a median-of-N effect on.
 """
 
 from __future__ import annotations
@@ -37,7 +48,7 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from inspection import ROI_PATH, AnomalyScorer, EmptyCheck, crop, load_roi  # noqa: E402
+from inspection import ROI_PATH, AnomalyScorer, EmptyCheck, brick_window, crop, load_roi  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "inspection"
@@ -142,6 +153,54 @@ def cmd_prepare(args) -> None:
     print("crops:", counts, "| bricks:", {k: len(v) for k, v in by_brick.items()})
 
 
+def crop_tag(side: int) -> str:
+    return f"brick{side}" if side else "bricktight"
+
+
+def cmd_prepare_brick(args) -> None:
+    """Brick-centred crops of the ROI crops (same split), the same way AnomalyScorer makes them at run time."""
+    split = json.loads((RESULTS / "split.json").read_text())
+    empty = EmptyCheck.load(MODELS / "empty_ref.png")
+    boxes = {}
+    for r in split:
+        if r["part"] == "empty":
+            continue
+        boxes[r["file"]] = empty.brick_box(cv2.imread(str(CROPS / r["part"] / r["file"])))
+    found = [b for b in boxes.values() if b]
+    w = np.array([b[2] - b[0] for b in found])
+    h = np.array([b[3] - b[1] for b in found])
+    longest = np.maximum(w, h)
+    print(f"brick found in {len(found)}/{len(boxes)} photos; longest box edge px: median {np.median(longest):.0f}, "
+          f"p95 {np.percentile(longest, 95):.0f}, max {longest.max()}")
+    side = args.side
+    if side < 0:  # auto: every brick fits with the margin
+        side = int(np.percentile(longest, 99) + 2 * args.margin)
+    out_dir = ROOT / "data" / f"inspection_crops_{crop_tag(side)}"
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    for r in split:
+        if r["part"] == "empty":
+            continue
+        roi_img = cv2.imread(str(CROPS / r["part"] / r["file"]))
+        x, y, s = brick_window(roi_img.shape[0], boxes[r["file"]], side, args.margin)
+        p = out_dir / r["part"] / r["file"]
+        p.parent.mkdir(parents=True, exist_ok=True)
+        cv2.imwrite(str(p), roi_img[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cfg = {"mode": "brick", "side": side or None, "margin": args.margin, "empty_ref": "empty_ref.png"}
+    (out_dir / "crop.json").write_text(json.dumps(cfg))
+    # consecutive good photos of one brick: how far did the brick move between shots?
+    goods = sorted((r for r in split if r["class"] == "good"), key=lambda r: r["file"])
+    shifts = []
+    for a, b in zip(goods, goods[1:], strict=False):
+        if a["brick"] == b["brick"] and boxes[a["file"]] and boxes[b["file"]]:
+            ca = np.add(boxes[a["file"]][:2], boxes[a["file"]][2:]) / 2
+            cb = np.add(boxes[b["file"]][:2], boxes[b["file"]][2:]) / 2
+            shifts.append(float(np.hypot(*(ca - cb))))
+    print(f"crop side {side or 'tight'} px (ROI is {roi_img.shape[0]}) -> {out_dir}")
+    print(f"brick centre shift between consecutive good photos: median {np.median(shifts):.0f} px, "
+          f"min {np.min(shifts):.0f}, <10 px in {int((np.array(shifts) < 10).sum())}/{len(shifts)}")
+
+
 # ---------------------------------------------------------------- training
 def engine_for(device: str, **kw):
     from anomalib.engine import Engine, SingleXPUStrategy, XPUAccelerator
@@ -156,7 +215,11 @@ def cmd_train(args) -> None:
     from anomalib.deploy import ExportType
     from anomalib.models import EfficientAd, Patchcore
 
-    name = f"{args.model}_{args.size}" + ("_allfaces" if args.all_faces else "")
+    root, crop_cfg = CROPS, None
+    if args.crops:  # brick-centred crops from prepare-brick
+        root = ROOT / "data" / f"inspection_crops_{args.crops}"
+        crop_cfg = json.loads((root / "crop.json").read_text())
+    name = f"{args.model}_" + (f"{args.crops}_" if args.crops else "") + f"{args.size}" + ("_allfaces" if args.all_faces else "")
     out = MODELS / name
     if out.exists():
         shutil.rmtree(out)
@@ -164,7 +227,7 @@ def cmd_train(args) -> None:
     size = (args.size, args.size)
     t0 = time.time()
     if args.model == "patchcore":
-        dm = Folder(name=name, root=CROPS, normal_dir=normal, abnormal_dir="defect", normal_test_dir="test_good",
+        dm = Folder(name=name, root=root, normal_dir=normal, abnormal_dir="defect", normal_test_dir="test_good",
                     train_batch_size=8, eval_batch_size=8, num_workers=4, val_split_mode="none", seed=0)
         model = Patchcore(backbone="wide_resnet50_2", layers=("layer2", "layer3"), coreset_sampling_ratio=args.coreset,
                           pre_processor=Patchcore.configure_pre_processor(image_size=size),
@@ -172,7 +235,7 @@ def cmd_train(args) -> None:
         engine = engine_for(args.device, default_root_dir=str(out / "work"), max_epochs=1, limit_val_batches=0)
         engine.fit(model=model, datamodule=dm)
     else:
-        dm = Folder(name=name, root=CROPS, normal_dir=normal, abnormal_dir="defect", normal_test_dir="test_good",
+        dm = Folder(name=name, root=root, normal_dir=normal, abnormal_dir="defect", normal_test_dir="test_good",
                     train_batch_size=1, eval_batch_size=8, num_workers=4, val_split_mode="from_train",
                     val_split_ratio=0.15, seed=0)
         model = EfficientAd(imagenet_dir=IMAGENETTE, model_size="small",
@@ -189,6 +252,10 @@ def cmd_train(args) -> None:
             "train_seconds": round(train_s, 1), "device": args.device, "xml": str(xml.relative_to(out))}
     if args.model == "efficientad":
         meta["steps"] = args.steps
+    if crop_cfg:  # the scorer finds the brick in the ROI itself, with this empty-spot reference
+        meta["crop"] = crop_cfg
+        for ext in (".png", ".json"):
+            shutil.copy(MODELS / f"empty_ref{ext}", xml.parent / f"empty_ref{ext}")
     (xml.parent / "checkurai_meta.json").write_text(json.dumps(meta, indent=2))
     shutil.rmtree(out / "work", ignore_errors=True)
     print(f"trained {name} in {train_s:.0f}s -> {xml}")
@@ -207,7 +274,7 @@ def auroc(neg: np.ndarray, pos: np.ndarray) -> float:
 def latency(xml: Path, size: int, device: str, n: int = 30) -> dict:
     try:
         t = time.time()
-        sc = AnomalyScorer(xml, device=device, image_size=size)
+        sc = AnomalyScorer(xml, device=device, image_size=size, fallback=None)
         compile_s = time.time() - t
     except Exception as e:  # noqa: BLE001 - report any compile failure
         return {"ok": False, "error": str(e).splitlines()[0][:200]}
@@ -223,23 +290,25 @@ def cmd_eval(args) -> None:
     xml = next((MODELS / args.name).rglob("*.xml"))
     meta = json.loads((xml.parent / "checkurai_meta.json").read_text())
     split = json.loads((RESULTS / "split.json").read_text())
-    sc = AnomalyScorer(xml, device="CPU")
+    sc = AnomalyScorer(xml, device="CPU")  # the scorer gets the ROI crop, exactly as in the cell program
     S = sc.size
     small = lambda im: cv2.resize(im, (S, S), interpolation=cv2.INTER_AREA).astype(np.float32)
-    empty_med = np.median(np.stack([small(cv2.imread(str(CROPS / "empty" / r["file"]))) for r in split if r["part"] == "empty"]), axis=0)
+    empty_med = np.median(np.stack([cv2.imread(str(CROPS / "empty" / r["file"])) for r in split if r["part"] == "empty"]),
+                          axis=0).astype(np.uint8)
     rows = []
     for r in split:
         if r["part"] in ("train_good", "empty"):
             continue
         im = cv2.imread(str(CROPS / r["part"] / r["file"]))
         s, amap, _ = sc(im)
+        x, y, w = sc.last_window
         on_brick = None
         if amap is not None:  # does the anomaly peak sit on the brick (not on the background)?
-            brick = cv2.GaussianBlur(np.abs(small(im) - empty_med).max(axis=2), (9, 9), 0) > 40
-            brick = cv2.dilate(brick.astype(np.uint8), np.ones((15, 15), np.uint8)) > 0
+            diff = np.abs(small(im[y:y + w, x:x + w]) - small(empty_med[y:y + w, x:x + w])).max(axis=2)
+            brick = cv2.dilate((cv2.GaussianBlur(diff, (9, 9), 0) > 40).astype(np.uint8), np.ones((15, 15), np.uint8)) > 0
             amap = cv2.resize(np.asarray(amap, np.float32), (S, S))
             on_brick = bool(brick[np.unravel_index(np.argmax(amap), amap.shape)])
-        rows.append({**r, "score": s, "peak_on_brick": on_brick})
+        rows.append({**r, "score": s, "peak_on_brick": on_brick, "window": [x, y, w]})
     get = lambda part, key=None, val=None: np.array([r["score"] for r in rows if r["part"] == part and (key is None or r.get(key) == val)])
     calib, test, defect = get("calib_good"), get("test_good"), get("defect")
     low = float(calib.max())
@@ -268,6 +337,22 @@ def cmd_eval(args) -> None:
         d = get("defect", "type", t)
         res["recall_per_type"][t] = {"n": int(len(d)), "recall": round(float((d >= low).mean()), 3) if len(d) else None,
                                      "auroc": round(auroc(heldout, d), 4)}
+    # policy: uncertain (inside the band) goes to the defect bowl, so a call is "defect" at score >= low.
+    # Two folds (threshold from calibration, tested on test; then the other way round) so every held-out good
+    # photo counts once in the false-alarm rate.
+    low2 = float(test.max())
+    res["policy_uncertain_is_defect"] = {
+        "false_alarm_rate_test": f"{fp}/{len(test)}",
+        "false_alarm_rate_2fold": f"{fp + int((calib >= low2).sum())}/{len(test) + len(calib)}",
+        "recall_2fold": {t: round(float(((get('defect', 'type', t) >= low).mean() + (get('defect', 'type', t) >= low2).mean()) / 2), 3)
+                         for t, _, _ in DEFECT_TYPES},
+        "recall_all_2fold": round(float(((defect >= low).mean() + (defect >= low2).mean()) / 2), 3),
+    }
+    if sc.crop_cfg:
+        wins = np.array([r["window"][2] for r in rows if r["part"] != "good_other"])
+        roi_side = load_roi()["size"]
+        res["crop"] = {**sc.crop_cfg, "window_side_median": int(np.median(wins)),
+                       "no_brick_found_whole_roi": int((wins == roi_side).sum())}
     peaks = {}
     for r in rows:
         if r["peak_on_brick"] is not None and r["part"] != "good_other":
@@ -322,6 +407,21 @@ def cmd_report(args) -> None:
     runs = [json.loads(p.read_text()) for p in sorted(RESULTS.glob("*.json")) if p.stem not in ("split", "summary", "empty_check")]
     empty = json.loads((RESULTS / "empty_check.json").read_text()) if (RESULTS / "empty_check.json").exists() else None
     summary = {"models": {r["name"]: {k: v for k, v in r.items() if k != "scores"} for r in runs}, "empty_check": empty}
+    table = {}
+    for r in runs:
+        pol = r.get("policy_uncertain_is_defect", {})
+        lat = r.get("latency", {})
+        table[r["name"]] = {
+            "auroc": r["auroc_heldout_good_vs_defect"],
+            "recall_at_low": {t: v["recall"] for t, v in r["recall_per_type"].items()},
+            "false_alarms_test": pol.get("false_alarm_rate_test"),
+            "false_alarms_2fold": pol.get("false_alarm_rate_2fold"),
+            "recall_2fold": pol.get("recall_2fold"),
+            "ms_cpu_gpu_npu": [lat.get(d, {}).get("median_ms") for d in DEVICES],
+        }
+        print(f"{r['name']:28s} AUROC {r['auroc_heldout_good_vs_defect']:.3f} recall {table[r['name']]['recall_at_low']} "
+              f"FA {pol.get('false_alarm_rate_test')} / 2-fold {pol.get('false_alarm_rate_2fold')} ms {table[r['name']]['ms_cpu_gpu_npu']}")
+    summary["table"] = table
     (RESULTS / "summary.json").write_text(json.dumps(summary, indent=1))
     by_name = {r["name"]: r for r in runs}
     show = [by_name[n] for n in args.plot if n in by_name] or runs[:2]
@@ -357,7 +457,11 @@ def main() -> None:
     p = sub.add_parser("roi")
     p.add_argument("--margin", type=int, default=24)
     sub.add_parser("prepare")
+    p = sub.add_parser("prepare-brick")
+    p.add_argument("--side", type=int, default=-1, help="crop side in ROI px; -1 auto (fits every brick), 0 tight box")
+    p.add_argument("--margin", type=int, default=24)
     p = sub.add_parser("train")
+    p.add_argument("--crops", default="", help="brick crop set from prepare-brick, e.g. brick330 (default: whole ROI)")
     p.add_argument("--model", choices=["patchcore", "efficientad"], required=True)
     p.add_argument("--size", type=int, default=256)
     p.add_argument("--all-faces", action="store_true", help="also treat side / bottom faces as good")
@@ -373,7 +477,7 @@ def main() -> None:
     p = sub.add_parser("report")
     p.add_argument("--plot", nargs="*", default=[])
     args = ap.parse_args()
-    {"roi": cmd_roi, "prepare": cmd_prepare, "train": cmd_train, "eval": cmd_eval, "empty": cmd_empty,
+    {"roi": cmd_roi, "prepare": cmd_prepare, "prepare-brick": cmd_prepare_brick, "train": cmd_train, "eval": cmd_eval, "empty": cmd_empty,
      "report": cmd_report}[args.cmd](args)
 
 

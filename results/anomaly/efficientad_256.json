@@ -148,6 +148,16 @@
    ]
   }
  },
+ "policy_uncertain_is_defect": {
+  "false_alarm_rate_test": "0/12",
+  "false_alarm_rate_2fold": "9/27",
+  "recall_2fold": {
+   "tape": 0.325,
+   "marker_line": 0.289,
+   "marker_dot": 0.294
+  },
+  "recall_all_2fold": 0.304
+ },
  "anomaly_peak_on_brick": {
   "good": "5/27",
   "tape": "11/20",

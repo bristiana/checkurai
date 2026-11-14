@@ -53,6 +53,16 @@
     "n": 43,
     "flagged": 9
    },
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "0/12",
+    "false_alarm_rate_2fold": "9/27",
+    "recall_2fold": {
+     "tape": 0.325,
+     "marker_line": 0.289,
+     "marker_dot": 0.294
+    },
+    "recall_all_2fold": 0.304
+   },
    "anomaly_peak_on_brick": {
     "good": "5/27",
     "tape": "11/20",
@@ -133,6 +143,16 @@
     "n": 43,
     "flagged": 43
    },
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "2/12",
+    "false_alarm_rate_2fold": "2/27",
+    "recall_2fold": {
+     "tape": 0.875,
+     "marker_line": 0.421,
+     "marker_dot": 0.294
+    },
+    "recall_all_2fold": 0.545
+   },
    "anomaly_peak_on_brick": {
     "good": "24/27",
     "tape": "20/20",
@@ -211,6 +231,16 @@
     }
    },
    "good_other_flagged": null,
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "2/12",
+    "false_alarm_rate_2fold": "2/27",
+    "recall_2fold": {
+     "tape": 0.85,
+     "marker_line": 0.447,
+     "marker_dot": 0.294
+    },
+    "recall_all_2fold": 0.545
+   },
    "anomaly_peak_on_brick": {
     "good": "24/27",
     "tape": "20/20",
@@ -235,6 +265,278 @@
      "error": "Exception from src/inference/src/cpp/core.cpp:117:"
     }
    }
+  },
+  "patchcore_brick371_384": {
+   "name": "patchcore_brick371_384",
+   "model": "patchcore",
+   "image_size": 384,
+   "normal_dirs": [
+    "train_good"
+   ],
+   "train_seconds": 223.8,
+   "counts": {
+    "calib_good": 15,
+    "test_good": 12,
+    "defect": 56
+   },
+   "auroc_heldout_good_vs_defect": 0.922,
+   "auroc_test_good_vs_defect": 0.9182,
+   "threshold": {
+    "low": 53.17375946044922,
+    "high": 61.02375030517578,
+    "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+    "low_from": "max score of the calibration good photos",
+    "high_from": "low + (low - median calibration good score)"
+   },
+   "confusion_at_low": {
+    "defect_as_defect": 48,
+    "defect_as_good": 8,
+    "good_as_defect": 3,
+    "good_as_good": 9
+   },
+   "in_band": {
+    "test_good": 3,
+    "defect": 19
+   },
+   "recall_per_type": {
+    "tape": {
+     "n": 20,
+     "recall": 1.0,
+     "auroc": 0.9852
+    },
+    "marker_line": {
+     "n": 19,
+     "recall": 1.0,
+     "auroc": 0.9864
+    },
+    "marker_dot": {
+     "n": 17,
+     "recall": 0.529,
+     "auroc": 0.7756
+    }
+   },
+   "good_other_flagged": {
+    "n": 43,
+    "flagged": 43
+   },
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "3/12",
+    "false_alarm_rate_2fold": "3/27",
+    "recall_2fold": {
+     "tape": 0.85,
+     "marker_line": 0.816,
+     "marker_dot": 0.441
+    },
+    "recall_all_2fold": 0.714
+   },
+   "crop": {
+    "mode": "brick",
+    "side": 371,
+    "margin": 24,
+    "empty_ref": "empty_ref.png",
+    "window_side_median": 371,
+    "no_brick_found_whole_roi": 0
+   },
+   "anomaly_peak_on_brick": {
+    "good": "23/27",
+    "tape": "20/20",
+    "marker_line": "19/19",
+    "marker_dot": "17/17"
+   }
+  },
+  "patchcore_bricktight_384": {
+   "name": "patchcore_bricktight_384",
+   "model": "patchcore",
+   "image_size": 384,
+   "normal_dirs": [
+    "train_good"
+   ],
+   "train_seconds": 246.2,
+   "counts": {
+    "calib_good": 15,
+    "test_good": 12,
+    "defect": 56
+   },
+   "auroc_heldout_good_vs_defect": 0.9597,
+   "auroc_test_good_vs_defect": 0.9643,
+   "threshold": {
+    "low": 53.94556427001953,
+    "high": 60.25541687011719,
+    "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+    "low_from": "max score of the calibration good photos",
+    "high_from": "low + (low - median calibration good score)"
+   },
+   "confusion_at_low": {
+    "defect_as_defect": 51,
+    "defect_as_good": 5,
+    "good_as_defect": 2,
+    "good_as_good": 10
+   },
+   "in_band": {
+    "test_good": 2,
+    "defect": 11
+   },
+   "recall_per_type": {
+    "tape": {
+     "n": 20,
+     "recall": 1.0,
+     "auroc": 0.9963
+    },
+    "marker_line": {
+     "n": 19,
+     "recall": 1.0,
+     "auroc": 1.0
+    },
+    "marker_dot": {
+     "n": 17,
+     "recall": 0.706,
+     "auroc": 0.8715
+    }
+   },
+   "good_other_flagged": {
+    "n": 43,
+    "flagged": 43
+   },
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "2/12",
+    "false_alarm_rate_2fold": "2/27",
+    "recall_2fold": {
+     "tape": 0.975,
+     "marker_line": 1.0,
+     "marker_dot": 0.676
+    },
+    "recall_all_2fold": 0.893
+   },
+   "crop": {
+    "mode": "brick",
+    "side": null,
+    "margin": 24,
+    "empty_ref": "empty_ref.png",
+    "window_side_median": 265,
+    "no_brick_found_whole_roi": 0
+   },
+   "anomaly_peak_on_brick": {
+    "good": "14/27",
+    "tape": "20/20",
+    "marker_line": "19/19",
+    "marker_dot": "17/17"
+   },
+   "latency": {
+    "CPU": {
+     "ok": true,
+     "median_ms": 675.44,
+     "p90_ms": 726.23,
+     "compile_s": 1.1
+    },
+    "GPU": {
+     "ok": true,
+     "median_ms": 395.05,
+     "p90_ms": 443.35,
+     "compile_s": 1.5
+    },
+    "NPU": {
+     "ok": true,
+     "median_ms": 324.2,
+     "p90_ms": 340.8,
+     "compile_s": 30.8
+    }
+   }
+  },
+  "patchcore_bricktight_512": {
+   "name": "patchcore_bricktight_512",
+   "model": "patchcore",
+   "image_size": 512,
+   "normal_dirs": [
+    "train_good"
+   ],
+   "train_seconds": 637.3,
+   "counts": {
+    "calib_good": 15,
+    "test_good": 12,
+    "defect": 56
+   },
+   "auroc_heldout_good_vs_defect": 0.9683,
+   "auroc_test_good_vs_defect": 0.9702,
+   "threshold": {
+    "low": 58.497215270996094,
+    "high": 66.41573333740234,
+    "rule": "score < low: good; low..high: re-inspect (median of frames), still >= low: defect; >= high: defect",
+    "low_from": "max score of the calibration good photos",
+    "high_from": "low + (low - median calibration good score)"
+   },
+   "confusion_at_low": {
+    "defect_as_defect": 49,
+    "defect_as_good": 7,
+    "good_as_defect": 0,
+    "good_as_good": 12
+   },
+   "in_band": {
+    "test_good": 0,
+    "defect": 29
+   },
+   "recall_per_type": {
+    "tape": {
+     "n": 20,
+     "recall": 0.9,
+     "auroc": 0.9963
+    },
+    "marker_line": {
+     "n": 19,
+     "recall": 1.0,
+     "auroc": 1.0
+    },
+    "marker_dot": {
+     "n": 17,
+     "recall": 0.706,
+     "auroc": 0.8998
+    }
+   },
+   "good_other_flagged": {
+    "n": 43,
+    "flagged": 39
+   },
+   "policy_uncertain_is_defect": {
+    "false_alarm_rate_test": "0/12",
+    "false_alarm_rate_2fold": "2/27",
+    "recall_2fold": {
+     "tape": 0.95,
+     "marker_line": 1.0,
+     "marker_dot": 0.735
+    },
+    "recall_all_2fold": 0.902
+   },
+   "crop": {
+    "mode": "brick",
+    "side": null,
+    "margin": 24,
+    "empty_ref": "empty_ref.png",
+    "window_side_median": 265,
+    "no_brick_found_whole_roi": 0
+   },
+   "anomaly_peak_on_brick": {
+    "good": "16/27",
+    "tape": "20/20",
+    "marker_line": "19/19",
+    "marker_dot": "16/17"
+   },
+   "latency": {
+    "CPU": {
+     "ok": true,
+     "median_ms": 1847.98,
+     "p90_ms": 1867.55,
+     "compile_s": 2.2
+    },
+    "GPU": {
+     "ok": true,
+     "median_ms": 833.15,
+     "p90_ms": 934.01,
+     "compile_s": 2.8
+    },
+    "NPU": {
+     "ok": false,
+     "error": "Exception from src/inference/src/cpp/core.cpp:117:"
+    }
+   }
   }
  },
  "empty_check": {
@@ -249,5 +551,127 @@
   "empty_frac_max": 0.00148,
   "brick_frac_min": 0.05152,
   "method": "reference = median of half the empty crops; the other half + every brick photo are the test"
+ },
+ "table": {
+  "efficientad_256": {
+   "auroc": 0.6772,
+   "recall_at_low": {
+    "tape": 0.0,
+    "marker_line": 0.0,
+    "marker_dot": 0.0
+   },
+   "false_alarms_test": "0/12",
+   "false_alarms_2fold": "9/27",
+   "recall_2fold": {
+    "tape": 0.325,
+    "marker_line": 0.289,
+    "marker_dot": 0.294
+   },
+   "ms_cpu_gpu_npu": [
+    283.9,
+    8.47,
+    9.81
+   ]
+  },
+  "patchcore_384": {
+   "auroc": 0.8981,
+   "recall_at_low": {
+    "tape": 0.95,
+    "marker_line": 0.684,
+    "marker_dot": 0.353
+   },
+   "false_alarms_test": "2/12",
+   "false_alarms_2fold": "2/27",
+   "recall_2fold": {
+    "tape": 0.875,
+    "marker_line": 0.421,
+    "marker_dot": 0.294
+   },
+   "ms_cpu_gpu_npu": [
+    745.53,
+    118.04,
+    324.47
+   ]
+  },
+  "patchcore_384_allfaces": {
+   "auroc": 0.8962,
+   "recall_at_low": {
+    "tape": 0.9,
+    "marker_line": 0.579,
+    "marker_dot": 0.353
+   },
+   "false_alarms_test": "2/12",
+   "false_alarms_2fold": "2/27",
+   "recall_2fold": {
+    "tape": 0.85,
+    "marker_line": 0.447,
+    "marker_dot": 0.294
+   },
+   "ms_cpu_gpu_npu": [
+    1086.04,
+    202.43,
+    null
+   ]
+  },
+  "patchcore_brick371_384": {
+   "auroc": 0.922,
+   "recall_at_low": {
+    "tape": 1.0,
+    "marker_line": 1.0,
+    "marker_dot": 0.529
+   },
+   "false_alarms_test": "3/12",
+   "false_alarms_2fold": "3/27",
+   "recall_2fold": {
+    "tape": 0.85,
+    "marker_line": 0.816,
+    "marker_dot": 0.441
+   },
+   "ms_cpu_gpu_npu": [
+    null,
+    null,
+    null
+   ]
+  },
+  "patchcore_bricktight_384": {
+   "auroc": 0.9597,
+   "recall_at_low": {
+    "tape": 1.0,
+    "marker_line": 1.0,
+    "marker_dot": 0.706
+   },
+   "false_alarms_test": "2/12",
+   "false_alarms_2fold": "2/27",
+   "recall_2fold": {
+    "tape": 0.975,
+    "marker_line": 1.0,
+    "marker_dot": 0.676
+   },
+   "ms_cpu_gpu_npu": [
+    675.44,
+    395.05,
+    324.2
+   ]
+  },
+  "patchcore_bricktight_512": {
+   "auroc": 0.9683,
+   "recall_at_low": {
+    "tape": 0.9,
+    "marker_line": 1.0,
+    "marker_dot": 0.706
+   },
+   "false_alarms_test": "0/12",
+   "false_alarms_2fold": "2/27",
+   "recall_2fold": {
+    "tape": 0.95,
+    "marker_line": 1.0,
+    "marker_dot": 0.735
+   },
+   "ms_cpu_gpu_npu": [
+    1847.98,
+    833.15,
+    null
+   ]
+  }
  }
 }
