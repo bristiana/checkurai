@@ -31,7 +31,14 @@ Weights are from Intel's official walkthrough (`JUNCTION2026.md` on the `junctio
 9. **Numbers:** accuracy and confusion matrix, cycle time, device matrix (CPU/GPU/NPU), power and temperature.
 10. **Story:** video, deck, README. Code freeze Sun 06:00, submit by 09:30.
 
-Later upgrades, only once 1–9 work: ArUco/3D twin and camera-bump recovery, the multi-view dance, SmolVLA, the belt.
+Later upgrades, only once 1–9 work. The first one is decided (Sat ~03:00):
+
+- **Inspection dance, "put back" variant.** A scripted grasp at the spot shows the brick to the `inspection` camera in 5–6 recorded poses (wrist roll 0/90/180/270, plus an underside tilt), puts it back on the spot, and returns HOME. Then `place_good` or `place_bad` runs as before, so the place demos stay valid.
+  - Record the poses with the leader (about 20 min of arm time) into `configs/inspect_poses.json`.
+  - Take good and defect photos in each pose, with one PatchCore per pose. The spot photos already taken stay as the top-face view.
+  - One process owns the arm and runs both the exported policies (`physicalai` runtime) and the scripted poses, because Studio's runtime control is teleop or model only and has no waypoints.
+  - Code can be written in parallel, without the arm.
+- **Then:** SmolVLA place policy (verdict as the task string; `place_good` + `place_bad` merged), ArUco/3D twin and camera-bump recovery, the belt.
 
 ## 2. Decisions
 | # | Topic | Decision |
