@@ -1,0 +1,1040 @@
+[
+ {
+  "file": "20261114-184320-581.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184325-488.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184329-671.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184331-696.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184333-710.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184336-987.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184339-596.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184341-952.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184345-550.jpg",
+  "class": "good",
+  "brick": "s1_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184357-169.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184401-425.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184405-929.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184410-177.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184412-011.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184413-903.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184417-231.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184421-480.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184425-729.jpg",
+  "class": "good",
+  "brick": "s1_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184434-314.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184436-653.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184440-047.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184442-977.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184446-192.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184452-003.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184455-324.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184459-326.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184503-111.jpg",
+  "class": "good",
+  "brick": "s1_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184513-846.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184517-236.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184520-850.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184524-498.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184526-264.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184528-224.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184532-401.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184535-992.jpg",
+  "class": "good",
+  "brick": "s1_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184546-350.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184550-004.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184553-808.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184556-933.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184600-071.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184603-076.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184606-471.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184609-875.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184612-930.jpg",
+  "class": "good",
+  "brick": "s1_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184623-351.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184628-185.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184632-760.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184636-028.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184639-083.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184642-952.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184646-022.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184649-417.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184652-748.jpg",
+  "class": "good",
+  "brick": "s1_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184701-331.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184705-111.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184709-946.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184713-537.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184716-737.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184721-183.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184726-013.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184730-776.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184735-688.jpg",
+  "class": "good",
+  "brick": "s1_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184753-604.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184757-133.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184801-509.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-184805-559.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184809-609.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184813-395.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-184817-644.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-184821-241.jpg",
+  "class": "good",
+  "brick": "s1_brick8",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193417-274.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193424-064.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193427-138.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193430-077.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193433-215.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193436-149.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193440-858.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193444-778.jpg",
+  "class": "good",
+  "brick": "s2_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193454-126.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193458-701.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193502-488.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193506-478.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193509-543.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193513-795.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193517-188.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193522-815.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193527-374.jpg",
+  "class": "good",
+  "brick": "s2_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193537-304.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193541-152.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193544-420.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193548-271.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193551-804.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193555-265.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193559-316.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193602-450.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193607-080.jpg",
+  "class": "good",
+  "brick": "s2_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193615-793.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193619-977.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193623-437.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193627-162.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193631-149.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193635-918.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193640-231.jpg",
+  "class": "good",
+  "brick": "s2_brick4",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193647-985.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193652-301.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193655-698.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193659-165.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193702-720.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193706-380.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193711-021.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193715-308.jpg",
+  "class": "good",
+  "brick": "s2_brick5",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193728-212.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193732-328.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193736-513.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-193739-977.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193743-963.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193747-946.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-193751-544.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193758-464.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193802-266.jpg",
+  "class": "good",
+  "brick": "s2_brick6",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193810-632.jpg",
+  "class": "good",
+  "brick": "s2_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193814-484.jpg",
+  "class": "good",
+  "brick": "s2_brick7",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-193818-209.jpg",
+  "class": "good",
+  "brick": "s2_brick7",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-203327-570.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203332-209.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203335-605.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-203338-938.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203340-113.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203342-269.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-203345-273.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203348-806.jpg",
+  "class": "good",
+  "brick": "s3_brick1",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203358-918.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203403-034.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203406-821.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-203410-025.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203413-162.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203416-426.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-203420-156.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203423-813.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203427-730.jpg",
+  "class": "good",
+  "brick": "s3_brick2",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203436-484.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203440-404.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203443-869.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "test_good"
+ },
+ {
+  "file": "20261114-203447-523.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203450-658.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203453-927.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "calib_good"
+ },
+ {
+  "file": "20261114-203457-259.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203500-331.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-203506-079.jpg",
+  "class": "good",
+  "brick": "s3_brick3",
+  "part": "train_good"
+ },
+ {
+  "file": "20261114-192709-855.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192714-687.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192720-824.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192733-244.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192738-081.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192742-655.jpg",
+  "class": "defect",
+  "type": "marker_dot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192757-213.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192803-479.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192809-040.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192819-098.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192822-888.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192826-682.jpg",
+  "class": "defect",
+  "type": "marker_smalldot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192847-886.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192852-590.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192856-707.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192901-219.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192905-595.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192910-037.jpg",
+  "class": "defect",
+  "type": "marker_bigdot",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192923-378.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192932-792.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192936-833.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192942-717.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192946-770.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ },
+ {
+  "file": "20261114-192950-757.jpg",
+  "class": "defect",
+  "type": "marker_line",
+  "part": "defect"
+ }
+]

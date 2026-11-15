@@ -1,0 +1,10 @@
+{
+ "pixel_thr": 35.0,
+ "frac_thr": 0.00013,
+ "empty_frac_max": 0.0,
+ "brick_frac_min": 0.00016,
+ "empty_correct": 1.0,
+ "brick_correct": 1.0,
+ "n_empty_eval": 4,
+ "n_brick": 169
+}

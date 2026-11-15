@@ -40,7 +40,7 @@ import sys
 import threading
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -55,10 +55,11 @@ DEFAULT_URL = "http://127.0.0.1:7860"
 DEFAULT_HOME = ROOT / "config" / "home_pose.json"
 DEFAULT_CELL_CONFIG = ROOT / "config" / "cell.json"
 RUNS_DIR = ROOT / "data" / "cell_runs"  # data/ is gitignored
+STUDIO_PY = Path.home() / "physical-ai-studio" / "application" / "backend" / ".venv" / "bin" / "python"  # has OpenVINO
 
 TASKS = {
     "pick": "pick up the brick and put it on the spot",
-    "place_good": "put the brick from the spot into the blue bowl",
+    "place_good": "put the brick from the spot into the lilac bowl",
     "place_bad": "put the brick from the spot into the orange bowl",
 }
 
@@ -161,15 +162,19 @@ class DoneDetector:
     update() returns one of:
       "start"    has not left HOME yet
       "moving"   away from HOME (or still settling)
-      "done"     back at HOME and still for `still_s`
+      "done"     back at HOME and still for `still_s`, or within `hold_score` x tolerance of HOME for `hold_s`
+                 (on the arm, Sun 03:00, a finished pick sat at HOME for 18 s without counting as done: the policy
+                 keeps twitching a joint by more than still_range there, or rests just outside the tolerance)
       "stalled"  still for `stall_s` but NOT at HOME (the policy is stuck, e.g. hovering)
     """
 
     def __init__(self, home: HomePose, still_s: float = 0.7, still_range: float = 1.5, gripper_still_range: float = 3.0,
-                 leave_score: float = 2.0, stall_s: float = 4.0):
+                 leave_score: float = 2.0, stall_s: float = 4.0, hold_s: float = 1.5, hold_score: float = 1.4):
         self.home = home
         self.still_s = still_s
         self.stall_s = stall_s
+        self.hold_s = hold_s
+        self.hold_score = hold_score
         self.leave_score = leave_score
         self.still_range = np.array([gripper_still_range if n == "gripper" else still_range for n in home.names])
         self.reset()
@@ -179,6 +184,7 @@ class DoneDetector:
         self.left = False
         self.t_left: float | None = None
         self.still_since: float | None = None
+        self.home_since: float | None = None
 
     def _still(self, t: float) -> bool:
         """Has every joint stayed within its range over the last still_s seconds?"""
@@ -201,7 +207,13 @@ class DoneDetector:
             self.still_since = None
         if not self.left:
             return "start"
+        if self.home.score(q) <= self.hold_score:
+            self.home_since = self.home_since if self.home_since is not None else t
+        else:
+            self.home_since = None
         if still and self.home.near(q):
+            return "done"
+        if self.home_since is not None and t - self.home_since >= self.hold_s:
             return "done"
         if still and self.still_since is not None and t - self.still_since >= self.stall_s:
             return "stalled"
@@ -379,9 +391,10 @@ class StudioSession:
         m = self.state.get("model")
         return m["model_id"] if m else None
 
-    async def load_model(self, model_id: str, backend: str, device: str) -> float:
-        """Load (or keep) a model; returns the seconds the swap took (0 if it was already loaded)."""
-        if self.loaded_model_id() == model_id:
+    async def load_model(self, model_id: str, backend: str, device: str, force: bool = False) -> float:
+        """Load (or keep) a model; returns the seconds the swap took (0 if it was already loaded). force: load it
+        again even if it is loaded (its export changed; Studio unloads the loaded one first)."""
+        if not force and self.loaded_model_id() == model_id:
             return 0.0
         t = time.perf_counter()
         await self.command("load_model", model_id=model_id, backend=backend, device=device, timeout=300)
@@ -423,6 +436,7 @@ class InspectionCamera:
         self.name, self.device, self.width, self.height, self.fps = name, device, width, height, fps
         self._latest: np.ndarray | None = None
         self._seq = 0
+        self.aligner = None  # tools.frame_align.FrameAligner, set by cmd_run
         self._cond = threading.Condition()
         self._stop = threading.Event()
 
@@ -474,6 +488,8 @@ class InspectionCamera:
                     raise TimeoutError(f"inspection camera: got {len(out)} of {n} frames")
                 seq = self._seq
                 out.append(self._latest.copy())
+        if self.aligner is not None:  # undo a bumped camera (tools/frame_align.py)
+            out = [self.aligner.align(f) for f in out]
         return out
 
     def stop(self) -> None:
@@ -496,10 +512,12 @@ class Inspection:
     model: str = ""
     crop: np.ndarray | None = field(default=None, repr=False)
     frame_scores: list[float] = field(default_factory=list)  # per frame, to see how much a re-inspection can move
+    frame: np.ndarray | None = field(default=None, repr=False)  # the median-score full frame (evidence, re-scoring)
 
     def log(self) -> dict[str, Any]:
-        d = asdict(self)
+        d = asdict(replace(self, crop=None, frame=None))
         d.pop("crop")
+        d.pop("frame")
         return d
 
 
@@ -521,29 +539,44 @@ class AnomalibInspector:
         from tools import inspection as insp
 
         self.insp = insp
-        self.roi = insp.load_roi()
         mdir = ROOT / "models" / "anomaly"
-        self.empty = insp.EmptyCheck.load(mdir / "empty_ref.png")
-        meta = json.loads((mdir / model_name / "weights" / "openvino" / "checkurai_meta.json").read_text())
-        xml = mdir / model_name / meta.get("xml", "weights/openvino/model.xml")
-        self.scorer = insp.AnomalyScorer(xml, device=device)
         res = json.loads((ROOT / "results" / "anomaly" / f"{model_name}.json").read_text())
+        # eval-views --mask results (<name>_mask): the same exported model ("base_model"), each view scored only
+        # inside the brick outline ("mask"), so paper, tape and mirror edges cannot make a clean brick a defect;
+        # "exposure": each view normalised to its empty reference's exposure first (eval-views --exposure)
+        base = res.get("base_model") or model_name
+        meta_dir = mdir / base / "weights" / "openvino"
+        meta = json.loads((meta_dir / "checkurai_meta.json").read_text())
+        xml = mdir / base / meta.get("xml", "weights/openvino/model.xml")
+        # mirror-booth models (crop mode "views" / "viewset") score the full frame: direct view + both mirrors,
+        # each view on its calibration scale (eval-views "view_norm"), worst view counts
+        self.views = (meta.get("crop") or {}).get("mode") in ("views", "viewset")
+        if self.views:
+            self.scorer = insp.MultiViewScorer(meta_dir, device=device, norm=res.get("view_norm"), mask=res.get("mask"),
+                                               exposure=res.get("exposure") or False)
+            self.empty = self.scorer.empty["direct"]
+        else:
+            self.roi = insp.load_roi()
+            self.empty = insp.EmptyCheck.load(mdir / "empty_ref.png")
+            self.scorer = insp.AnomalyScorer(xml, device=device)
         self.low, self.high = float(res["threshold"]["low"]), float(res["threshold"]["high"])
         self.model_name, self.device, self.force = model_name, device, force
 
     def spot(self, frames: list[np.ndarray]) -> tuple[bool, float]:
-        fracs = [self.empty.changed_fraction(self.insp.crop(f, self.roi)) for f in frames]
+        if self.views:
+            fracs = [self.scorer.spot(f) for f in frames]
+        else:
+            fracs = [self.empty.changed_fraction(self.insp.crop(f, self.roi)) for f in frames]
         frac = float(np.median(fracs))
         return frac > self.empty.frac_thr, frac
 
     def inspect(self, frames: list[np.ndarray]) -> Inspection:
-        crops = [self.insp.crop(f, self.roi) for f in frames]
         present, frac = self.spot(frames)
         if not present:
             return Inspection("empty", None, False, frac, len(frames), 0.0, self.low, self.high, self.model_name)
         scores, ms = [], []
-        for c in crops:
-            s, _, t = self.scorer(c)
+        for f in frames:
+            s, _, t = self.scorer(f if self.views else self.insp.crop(f, self.roi))
             scores.append(s)
             ms.append(t)
         score = float(np.median(scores))
@@ -551,9 +584,11 @@ class AnomalibInspector:
         verdict = "good" if score < self.low else "defect"
         if self.force:
             verdict = self.force
-        mid = crops[int(np.argsort(scores)[len(scores) // 2])]
+        f_mid = frames[int(np.argsort(scores)[len(scores) // 2])]
+        mid = self.scorer.montage(f_mid) if self.views else self.insp.crop(f_mid, self.roi)
         return Inspection(verdict, round(score, 4), uncertain, round(frac, 5), len(frames), round(float(np.median(ms)), 2),
-                          self.low, self.high, self.model_name, mid, [round(float(s), 4) for s in scores])
+                          self.low, self.high, self.model_name, mid, [round(float(s), 4) for s in scores],
+                          f_mid if self.views else None)
 
 
 # --------------------------------------------------------------------------------------------
@@ -603,15 +638,52 @@ class Cell:
         except (NotImplementedError, ValueError, OSError):
             pass
 
+    async def hide_bowl_bricks(self, name: str, model: dict[str, Any]) -> bool:
+        """--hide-bowl-bricks: re-make this place model's export from a top picture taken now, with the bricks lying
+        in the bowls hidden from its top camera (tools/policy_tune.py --hide-bowl-bricks; the stored top-camera warp,
+        gripper settings and a painted plate are kept). True if the export changed (Studio must load it again)."""
+        cmd = [str(STUDIO_PY), str(ROOT / "tools" / "policy_tune.py"), model["name"], "--hide-bowl-bricks"]
+        try:  # keep a painted-in plate (not stored by policy_tune, so it has to be asked for again)
+            if "paint_plate" in json.loads((Path(model["path"]) / "exports" / "openvino" / "tune.json").read_text()):
+                cmd.append("--paint-plate")
+        except (KeyError, OSError, ValueError):
+            pass
+        t = time.perf_counter()
+        proc = await asyncio.create_subprocess_exec(*cmd, cwd=str(ROOT), stdout=asyncio.subprocess.PIPE,
+                                                    stderr=asyncio.subprocess.STDOUT)
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), self.a.hide_timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            print(f"[cell] {name}: hiding the bowl bricks took over {self.a.hide_timeout:.0f}s - running the export "
+                  "as it is", flush=True)
+            return False
+        keys = ("hide bowl bricks:", "hide bricks check", "not applied", "NOT updated", "Error", "error")
+        for line in out.decode(errors="replace").splitlines():
+            if any(k in line for k in keys):
+                print(f"[cell] {name}:   {line.strip()}", flush=True)
+        ok = proc.returncode == 0
+        print(f"[cell] {name}: bowl bricks {'re-made' if ok else 'NOT re-made (export as it was)'} for {model['name']} "
+              f"in {time.perf_counter() - t:.1f}s", flush=True)
+        return ok
+
     async def run_stage(self, name: str) -> Stage:
         model = self.models[name]
-        load_s = await self.s.load_model(model["id"], self.a.backend, self.a.device)
-        det = DoneDetector(self.home, still_s=self.a.still_s, still_range=self.a.still_range, stall_s=self.a.stall_s)
+        reload = False  # Studio only reads the export when it loads the model: a re-made one must be loaded again
+        if self.a.hide_bowl_bricks and name in ("place_good", "place_bad"):
+            reload = await self.hide_bowl_bricks(name, model)
+        load_s = await self.s.load_model(model["id"], self.a.backend, self.a.device, force=reload)
+        det = DoneDetector(self.home, still_s=self.a.still_s, still_range=self.a.still_range, stall_s=self.a.stall_s,
+                           hold_score=self.a.hold_score)
         task = getattr(self.a, f"{name}_task") or TASKS[name]
         print(f"[cell] {name}: model {model['name']} (load {load_s:.1f}s), task '{task}'", flush=True)
         t_run, t_run_mono = time.perf_counter(), time.monotonic()
         await self.s.run_model(task, self.a.hz, self.a.execution, self.a.request_threshold, self.a.grace_s)
         outcome, detail, last_t = "timeout", "", 0.0
+        # Re-planning often from HOME never starts: the demos wait ~1 s there, so every fresh chunk begins with
+        # that wait again. Start at --request-threshold; switch to --moving-threshold once the arm is under way.
+        switch = self.a.moving_threshold
         try:
             while True:
                 await asyncio.sleep(0.01)
@@ -629,6 +701,11 @@ class Cell:
                 if self.s.joints_t != last_t:
                     last_t = self.s.joints_t
                     st = det.update(last_t, self.s.q(self.home.names))
+                    if switch is not None and st == "moving":
+                        await self.s.run_model(task, self.a.hz, self.a.execution, switch, 0.0)
+                        print(f"[cell] {name}: under way after {time.perf_counter() - t_run:.1f}s; "
+                              f"re-planning at {switch}", flush=True)
+                        switch = None
                     if st == "done":
                         outcome = "done"
                         break
@@ -648,6 +725,41 @@ class Cell:
                       None if q is None else round(self.home.score(q), 2), detail)
         print(f"[cell] {name}: {outcome} in {stage.run_s:.1f}s {detail}", flush=True)
         return stage
+
+    async def rehome(self) -> bool:
+        """Release the arm from Studio (its torque stays on), drive it HOME over its own bus with
+        tools/go_home.py, and load the environment again."""
+        print("[cell] bringing the arm HOME to try again from the top", flush=True)
+        await self.s.command("unload_environment", timeout=60)
+        proc = await asyncio.create_subprocess_exec(sys.executable, str(ROOT / "tools" / "go_home.py"))
+        rc = await proc.wait()
+        self.s.statuses.clear()
+        t = self.s.joints_t
+        await self.s.load_environment(self.a.environment)
+        for _ in range(100):
+            if self.s.joints_t != t:
+                break
+            await asyncio.sleep(0.1)
+        q = self.s.q(self.home.names)
+        deadline = time.monotonic() + 5.0
+        while rc == 0 and (q is None or not self.home.near(q)) and time.monotonic() < deadline:
+            await asyncio.sleep(0.2)  # Studio's first readings after a reload can still be the pre-HOME pose
+            q = self.s.q(self.home.names)
+        ok = rc == 0 and q is not None and self.home.near(q)
+        print(f"[cell] {'arm is HOME' if ok else 'could not bring the arm HOME'}", flush=True)
+        return ok
+
+    async def run_stage_tries(self, name: str) -> list[Stage]:
+        """run_stage; if it times out, stalls or the follower bus fails (e.g. the arm keeps trying low down
+        after the brick slipped), bring the arm HOME and start the stage again, up to --rehome-retries times."""
+        stages = [await self.run_stage(name)]
+        for _ in range(self.a.rehome_retries):
+            if stages[-1].outcome not in ("timeout", "stalled", "failed") or self.stop_requested:
+                break
+            if not await self.rehome():
+                break
+            stages.append(await self.run_stage(name))
+        return stages
 
     def spot(self) -> tuple[bool, float]:
         if self.camera is None or self.inspector is None:
@@ -688,6 +800,10 @@ class Cell:
             cv2.putText(img, label, (12, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.1, color, 3, cv2.LINE_AA)
             cv2.imwrite(str(p), img)
             out["inspect"] = p.name
+        if insp.frame is not None:  # the full frame, so a new inspection model can be re-scored on tonight's cycles
+            p = self.run_dir / f"cycle_{cycle:03d}_frame.jpg"
+            cv2.imwrite(str(p), insp.frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            out["frame"] = p.name
         if "top" in self.s.frames:
             p = self.run_dir / f"cycle_{cycle:03d}_top.jpg"
             p.write_bytes(self.s.frames["top"][1])
@@ -699,6 +815,10 @@ class Cell:
         t0 = time.perf_counter()
         try:
             q = self.s.q(self.home.names)
+            if q is not None and not self.home.near(q) and self.home.score(q) <= getattr(self.a, "hold_score", 1.4):
+                # the last stage counted as done while resting just off HOME (--hold-score): settle it HOME first
+                await self.rehome()
+                q = self.s.q(self.home.names)
             if q is None or not self.home.near(q):
                 raise Abort(f"arm is not at HOME (score {self.home.score(q) if q is not None else 'n/a'}); "
                             "bring it HOME first")
@@ -706,8 +826,9 @@ class Cell:
             rec["spot_before"] = {"brick": present, "fraction": round(frac, 5)}
             if not present or self.camera is None:
                 for attempt in range(1 + self.a.pick_retries):
-                    st = await self.run_stage("pick")
-                    rec["stages"].append(asdict(st))
+                    sts = await self.run_stage_tries("pick")
+                    rec["stages"] += [asdict(x) for x in sts]
+                    st = sts[-1]
                     if st.outcome != "done":
                         raise Abort(f"pick {st.outcome}")
                     present, frac = self.spot()
@@ -734,12 +855,17 @@ class Cell:
             if verdict == "empty":
                 raise Abort("inspection saw an empty spot")
             place = "place_good" if verdict == "good" else "place_bad"
-            st = await self.run_stage(place)
-            rec["stages"].append(asdict(st))
-            if st.outcome != "done":
-                raise Abort(f"{place} {st.outcome}")
-            present, frac = self.spot()
-            rec["spot_after_place"] = {"brick": present, "fraction": round(frac, 5)}
+            for attempt in range(1 + self.a.place_retries):
+                sts = await self.run_stage_tries(place)
+                rec["stages"] += [asdict(x) for x in sts]
+                st = sts[-1]
+                if st.outcome != "done":
+                    raise Abort(f"{place} {st.outcome}")
+                present, frac = self.spot()
+                rec["spot_after_place"] = {"brick": present, "fraction": round(frac, 5), "attempt": attempt + 1}
+                if not present or self.camera is None:
+                    break
+                print("[cell] brick still on the spot after the place (missed grasp); retrying", flush=True)
             rec["result"] = "sorted" if not present else "brick still on the spot"
         except Abort as e:
             rec["result"] = f"aborted: {e}"
@@ -816,7 +942,19 @@ async def cmd_run(args: argparse.Namespace) -> None:
     camera = inspector = None
     if not args.no_inspection:
         camera = InspectionCamera(args.camera_name, args.camera_device).start()
-        inspector = AnomalibInspector(args.anomaly_model, args.anomaly_device, args.force_verdict)
+        if not args.no_align:
+            from tools.frame_align import FrameAligner
+
+            camera.aligner = FrameAligner.try_load()
+            if camera.aligner is not None:
+                camera.aligner.align(camera.grab(1)[0])
+                print(f"inspection camera vs the anomaly photos: {camera.aligner.info} (frames are aligned)")
+        if (ROOT / "models" / "classifier" / args.anomaly_model).is_dir():  # supervised defect classifier
+            from tools.brick_classifier import BrickClassifierInspector
+
+            inspector = BrickClassifierInspector(args.anomaly_model, args.anomaly_device, args.force_verdict)
+        else:
+            inspector = AnomalibInspector(args.anomaly_model, args.anomaly_device, args.force_verdict)
         print(f"inspection: {camera.device}, model {args.anomaly_model} on {args.anomaly_device}, "
               f"threshold {inspector.low:.2f} / band {inspector.high:.2f}")
     log = (run_dir / "cycles.jsonl").open("a")
@@ -848,8 +986,8 @@ async def cmd_run(args: argparse.Namespace) -> None:
             print("running; type s + Enter to hold the arm and stop", flush=True)
             try:
                 if args.only:
-                    st = await cell.run_stage(args.only)
-                    rec = {"cycle": 0, "only": args.only, "stages": [asdict(st)], "started": now_iso()}
+                    sts = await cell.run_stage_tries(args.only)
+                    rec = {"cycle": 0, "only": args.only, "stages": [asdict(x) for x in sts], "started": now_iso()}
                     log.write(json.dumps(rec, default=str) + "\n")
                     log.flush()
                 else:
@@ -891,11 +1029,23 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--device", default=cfg.get("device", "GPU"), help="OpenVINO device for the policies")
     ap.add_argument("--hz", type=float, default=cfg.get("hz", 30.0), help="action rate (and observation rate)")
     ap.add_argument("--execution", choices=["sync", "async"], default=cfg.get("execution", "sync"))
-    ap.add_argument("--request-threshold", type=float, default=cfg.get("request_threshold", 0.5))
+    ap.add_argument("--request-threshold", type=float, default=cfg.get("request_threshold", 0.5),
+                    help="ask for the next chunk when this fraction of the current one is left (0.5: every 50 steps)")
+    ap.add_argument("--moving-threshold", type=float, default=cfg.get("moving_threshold"),
+                    help="once the arm has left HOME, re-plan at this threshold instead (e.g. 0.8: every 20 steps)")
     ap.add_argument("--grace-s", type=float, default=cfg.get("grace_s", 3.0))
+    ap.add_argument("--hide-bowl-bricks", action="store_true", default=cfg.get("hide_bowl_bricks", False),
+                    help="before each place stage: re-make its model so its top camera sees the bricks already "
+                         "lying in the bowls as empty bowl (tools/policy_tune.py --hide-bowl-bricks, ~3 s) and "
+                         "load it again")
+    ap.add_argument("--hide-timeout", type=float, default=cfg.get("hide_timeout", 30.0),
+                    help="--hide-bowl-bricks: give up on the re-make after this many seconds (runs as it was)")
     ap.add_argument("--still-s", type=float, default=cfg.get("still_s", 0.7))
     ap.add_argument("--still-range", type=float, default=cfg.get("still_range", 1.5))
     ap.add_argument("--stall-s", type=float, default=cfg.get("stall_s", 4.0))
+    ap.add_argument("--hold-score", type=float, default=cfg.get("hold_score", 1.4),
+                    help="a stage counts as done once the arm stays within this many x tolerance of HOME for 1.5 s "
+                         "(act-pick-v6-h100 rests at ~2.4x: elbow / wrist flex a little off HOME)")
     ap.add_argument("--stall-abort", action=argparse.BooleanOptionalAction, default=cfg.get("stall_abort", True))
     ap.add_argument("--stage-timeout", type=float, default=cfg.get("stage_timeout", 40.0))
     ap.add_argument("--start-timeout", type=float, default=cfg.get("start_timeout", 10.0),
@@ -925,7 +1075,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cycles", type=int, default=1)
     p.add_argument("--only", choices=["pick", "place_good", "place_bad"], help="run one stage once")
     p.add_argument("--pick-retries", type=int, default=1)
+    p.add_argument("--place-retries", type=int, default=1, help="run the place again if the brick is still on the spot")
+    p.add_argument("--rehome-retries", type=int, default=1,
+                   help="after a timeout / stall / bus error: drive the arm HOME and start the stage again")
     p.add_argument("--no-inspection", action="store_true", help="skip the camera and anomaly model")
+    p.add_argument("--no-align", action="store_true",
+                   help="do not map inspection frames onto the anomaly photos' geometry (tools/frame_align.py)")
     p.add_argument("--force-verdict", choices=["good", "defect"], help="override the verdict (testing)")
     p.add_argument("--allow-off-home", action="store_true")
     p.add_argument("--keep-session", action="store_true", help="wait for Enter before releasing the robot")

@@ -49,7 +49,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from inspection import (ROI_PATH, VIEWS_PATH, AnomalyScorer, EmptyCheck, MultiViewScorer, brick_window, crop,  # noqa: E402
-                        load_roi, load_views, view_crops)
+                        load_roi, load_views, prep_view, view_crops)
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "inspection"
@@ -604,6 +604,8 @@ def cmd_prepare_views(args) -> None:
     ses = json.loads(SESSIONS_PATH.read_text())
     views = load_views(VIEWS_PATH)
     refs = {n: EmptyCheck.load(VIEW_REFS / f"{n}_empty.png") for n in views["views"]}
+    fill = {"dilate": args.fill, "value": 128} if args.fill else None
+    pcfg = {"side": args.side or None, "margin": args.margin, **({"fill": fill} if fill else {})}
     split, by_brick = [], {}
     for p in photos("good"):
         brick = lookup(hhmmss(p), ses["good"])
@@ -628,17 +630,19 @@ def cmd_prepare_views(args) -> None:
     missing = {n: 0 for n in views["views"]}
     for r in split:
         for n, v in view_crops(cv2.imread(str(DATA / r["class"] / r["file"])), views).items():
-            box = refs[n].brick_box(v)
-            missing[n] += box is None
-            x, y, s = brick_window((v.shape[1], v.shape[0]), box, args.side or None, args.margin)
+            if args.exposure:
+                v = refs[n].normalise(v)
+            sq, _, fm = prep_view(v, refs[n], pcfg)
+            missing[n] += (fm is None) if fill else (refs[n].brick_box(v) is None)
             out = VCROPS / r["part"] / f"{Path(r['file']).stem}__{n}.jpg"
             out.parent.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(out), v[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+            cv2.imwrite(str(out), sq, [cv2.IMWRITE_JPEG_QUALITY, 95])
             one = Path(f"{VCROPS}_{n}") / r["part"] / r["file"]  # this view only
             one.parent.mkdir(parents=True, exist_ok=True)
-            cv2.imwrite(str(one), v[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+            cv2.imwrite(str(one), sq, [cv2.IMWRITE_JPEG_QUALITY, 95])
     cfg = {"mode": "views", "side": args.side or None, "margin": args.margin, "frame": views["frame"],
-           "views": views["views"], "empty_refs": {n: f"{n}_empty.png" for n in views["views"]}}
+           "views": views["views"], "empty_refs": {n: f"{n}_empty.png" for n in views["views"]},
+           **({"fill": fill} if fill else {}), **({"exposure": True} if args.exposure else {})}
     (VCROPS / "crop.json").write_text(json.dumps(cfg))
     for n in views["views"]:
         (Path(f"{VCROPS}_{n}") / "crop.json").write_text(json.dumps({**cfg, "mode": "view", "view": n}))
@@ -686,13 +690,23 @@ def cmd_eval_views(args) -> None:
     --mask: each view's score is the max (--pct < 100: that percentile) of the anomaly map inside the brick outline
     grown by --dilate view px (MultiViewScorer mask), not the model's image score. Written to --out (default
     <name>_mask) with "base_model" and "mask", so the cell program loads it as its own --anomaly-model name.
+    --exposure: each view brought to the training photos' exposure first (MultiViewScorer exposure: the gain to the
+    empty reference divided by the median gain of the train_good photos, so drift is undone but the training light is
+    kept); adds "_x" to the default --out and "exposure": {view: [b, g, r]} to the results.
     """
     mdir = next((MODELS / args.name).rglob("checkurai_meta.json")).parent
     meta = json.loads((mdir / "checkurai_meta.json").read_text())
     split = json.loads(SPLIT_VIEWS.read_text())
-    mask = {"dilate": args.dilate, "pct": args.pct} if args.mask else None
-    out_name = args.out or (f"{args.name}_mask" if mask else args.name)
+    mask = {"dilate": args.dilate, "pct": args.pct, "tight": args.tight} if args.mask else None
+    out_name = args.out or (f"{args.name}_mask" if mask else args.name) + ("_x" if args.exposure else "")
     sc = MultiViewScorer(mdir, device=args.device, mask=mask)
+    if args.exposure:
+        gains = {n: [] for n in sc.views["views"]}
+        for r in [r for r in split if r["part"] == "train_good"]:
+            for n, v in view_crops(cv2.imread(str(DATA / r["class"] / r["file"])), sc.views).items():
+                gains[n].append(sc.empty[n].gain(v))
+        sc.exposure = {n: [round(float(x), 4) for x in np.median(np.stack(g), axis=0)] for n, g in gains.items()}
+        print("exposure base (median train_good gain to the empty reference, b g r):", sc.exposure)
     rows = []
     for r in split:
         if r["part"] == "train_good":
@@ -720,6 +734,7 @@ def cmd_eval_views(args) -> None:
     res = {
         "name": out_name, **{k: meta[k] for k in ("model", "image_size", "normal_dirs", "train_seconds")},
         **({"base_model": args.name, "mask": sc.mask} if mask else {}),
+        **({"base_model": args.name, "exposure": sc.exposure} if args.exposure else {}),
         "counts": {"calib_good": len(calib), "test_good": len(test), "defect": len(defect)},
         "auroc_heldout_good_vs_defect": round(auroc(heldout, defect), 4),
         "auroc_test_good_vs_defect": round(auroc(test, defect), 4),
@@ -816,6 +831,9 @@ def main() -> None:
     p.add_argument("--margin", type=int, default=40)
     p.add_argument("--out", default="", help="crop set tag -> data/inspection_crops_views_TAG (keeps split_views.json)")
     p.add_argument("--held-out", default="2,5,8", help="held-out photo indices (mod 10) per brick; the rest is training")
+    p.add_argument("--fill", type=int, default=0, help="grey out everything outside the tight brick outline grown by "
+                   "this many view px (inspection.prep_view); 0 = off")
+    p.add_argument("--exposure", action="store_true", help="normalise each view to its empty reference's exposure first")
     p = sub.add_parser("viewset")
     p.add_argument("--size", type=int, default=384)
     p.add_argument("--margin", type=int, default=40)
@@ -825,7 +843,9 @@ def main() -> None:
     p.add_argument("--mask", action="store_true", help="score the anomaly map inside the brick outline only")
     p.add_argument("--dilate", type=int, default=MultiViewScorer.MASK_DEFAULTS["dilate"], help="grow the outline (view px)")
     p.add_argument("--pct", type=float, default=MultiViewScorer.MASK_DEFAULTS["pct"], help="percentile of the map; 100 = max")
-    p.add_argument("--out", default="", help="results name (default: --name, or <name>_mask with --mask)")
+    p.add_argument("--tight", action="store_true", help="with --mask: outline = convex hull of the coloured pixels only")
+    p.add_argument("--exposure", action="store_true", help="normalise each view to its empty reference's exposure first")
+    p.add_argument("--out", default="", help="results name (default: --name, or <name>_mask with --mask; + _x with --exposure)")
     args = ap.parse_args()
     if args.set:
         use_set(args.set)

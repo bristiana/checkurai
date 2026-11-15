@@ -1,0 +1,547 @@
+{
+ "name": "zoo_rd_r18_256",
+ "model": "rd",
+ "image_size": 256,
+ "normal_dirs": [
+  "train_good"
+ ],
+ "train_seconds": 369.6,
+ "counts": {
+  "calib_good": 7,
+  "test_good": 6,
+  "defect": 24
+ },
+ "auroc_heldout_good_vs_defect": 0.8462,
+ "auroc_test_good_vs_defect": 0.7917,
+ "auroc_per_view": {
+  "direct": 0.875,
+  "left": 0.7436,
+  "right": 0.75
+ },
+ "threshold": {
+  "low": 1.0,
+  "high": 1.7068233878945402,
+  "rule": "score (normalised max over views, median over frames) < low: good; >= low: defect (low..high is flagged uncertain)",
+  "low_from": "max score of the calibration good photos",
+  "high_from": "low + (low - median calibration good score)"
+ },
+ "confusion_at_low": {
+  "defect_as_defect": 15,
+  "defect_as_good": 9,
+  "good_as_defect": 1,
+  "good_as_good": 5
+ },
+ "recall_per_type": {
+  "marker_bigdot": {
+   "n": 6,
+   "recall": 0.833,
+   "auroc": 0.9487
+  },
+  "marker_dot": {
+   "n": 6,
+   "recall": 0.833,
+   "auroc": 0.9231
+  },
+  "marker_line": {
+   "n": 6,
+   "recall": 0.667,
+   "auroc": 0.8462
+  },
+  "marker_smalldot": {
+   "n": 6,
+   "recall": 0.167,
+   "auroc": 0.6667
+  }
+ },
+ "policy_uncertain_is_defect": {
+  "false_alarm_rate_test": "1/6",
+  "false_alarm_rate_2fold": "1/13",
+  "recall_2fold": {
+   "marker_bigdot": 0.75,
+   "marker_dot": 0.75,
+   "marker_line": 0.333,
+   "marker_smalldot": 0.083
+  },
+  "recall_all_2fold": 0.479
+ },
+ "recall_at_high": {
+  "all": "7/24",
+  "marker_bigdot": 0.5,
+  "marker_dot": 0.667,
+  "marker_line": 0.0,
+  "marker_smalldot": 0.0,
+  "test_good_at_high": 0
+ },
+ "latency_ms_3_views": {
+  "device": "CPU",
+  "median": 140.3,
+  "wall_median": 152.1
+ },
+ "score_rule": "max over views of (raw - median) / (max - median) of that view's calibration good scores",
+ "crop": "views",
+ "view_norm": {
+  "direct": [
+   0.441229909658432,
+   0.5761075615882874
+  ],
+  "left": [
+   0.4706602394580841,
+   0.5746675133705139
+  ],
+  "right": [
+   0.4393863379955292,
+   0.5678724050521851
+  ]
+ },
+ "auroc_max_raw": 0.8429,
+ "scores": {
+  "calib_good": [
+   0.4569,
+   1.0,
+   0.038,
+   0.3122,
+   -0.4393,
+   0.2081,
+   0.2932
+  ],
+  "test_good": [
+   1.5011,
+   0.683,
+   0.0345,
+   -0.1329,
+   -0.0873,
+   0.9498
+  ],
+  "defect": {
+   "marker_bigdot": [
+    2.1512,
+    2.2826,
+    1.6977,
+    2.7853,
+    0.8409,
+    1.4064
+   ],
+   "marker_dot": [
+    0.373,
+    3.5642,
+    1.007,
+    1.9834,
+    2.4268,
+    1.7181
+   ],
+   "marker_line": [
+    0.4052,
+    1.056,
+    1.3722,
+    0.9128,
+    1.0729,
+    1.3259
+   ],
+   "marker_smalldot": [
+    1.362,
+    0.9429,
+    0.8274,
+    0.2561,
+    0.4194,
+    0.2338
+   ]
+  }
+ },
+ "rows": [
+  {
+   "file": "20261114-193424-064.jpg",
+   "part": "calib_good",
+   "score": 0.4569055291031771,
+   "views": {
+    "direct": 0.5028562545776367,
+    "left": 0.4706602394580841,
+    "right": 0.4393863379955292
+   }
+  },
+  {
+   "file": "20261114-193433-215.jpg",
+   "part": "test_good",
+   "score": 1.501092150072853,
+   "views": {
+    "direct": 0.531670868396759,
+    "left": 0.6267847418785095,
+    "right": 0.4906443953514099
+   }
+  },
+  {
+   "file": "20261114-193502-488.jpg",
+   "part": "calib_good",
+   "score": 1.0,
+   "views": {
+    "direct": 0.5761075615882874,
+    "left": 0.5746675133705139,
+    "right": 0.5678724050521851
+   }
+  },
+  {
+   "file": "20261114-193513-795.jpg",
+   "part": "test_good",
+   "score": 0.6829842083388297,
+   "views": {
+    "direct": 0.5333492159843445,
+    "left": 0.4496469497680664,
+    "right": 0.49733787775039673
+   }
+  },
+  {
+   "file": "20261114-193544-420.jpg",
+   "part": "calib_good",
+   "score": 0.03798040347803164,
+   "views": {
+    "direct": 0.36406102776527405,
+    "left": 0.47461047768592834,
+    "right": 0.345681756734848
+   }
+  },
+  {
+   "file": "20261114-193555-265.jpg",
+   "part": "test_good",
+   "score": 0.03453731243687501,
+   "views": {
+    "direct": 0.4458882212638855,
+    "left": 0.3325687646865845,
+    "right": 0.306753009557724
+   }
+  },
+  {
+   "file": "20261114-193615-793.jpg",
+   "part": "calib_good",
+   "score": 0.31220477348237274,
+   "views": {
+    "direct": 0.441229909658432,
+    "left": 0.5031318068504333,
+    "right": 0.36773476004600525
+   }
+  },
+  {
+   "file": "20261114-193627-162.jpg",
+   "part": "test_good",
+   "score": -0.13292999624592028,
+   "views": {
+    "direct": 0.4233006238937378,
+    "left": 0.3773758113384247,
+    "right": 0.39050376415252686
+   }
+  },
+  {
+   "file": "20261114-193655-698.jpg",
+   "part": "calib_good",
+   "score": -0.43925755640382186,
+   "views": {
+    "direct": 0.35853609442710876,
+    "left": 0.36377787590026855,
+    "right": 0.3829478621482849
+   }
+  },
+  {
+   "file": "20261114-193706-380.jpg",
+   "part": "test_good",
+   "score": -0.0873003520766585,
+   "views": {
+    "direct": 0.3603491485118866,
+    "left": 0.3370996117591858,
+    "right": 0.42816945910453796
+   }
+  },
+  {
+   "file": "20261114-193736-513.jpg",
+   "part": "calib_good",
+   "score": 0.20808753415751297,
+   "views": {
+    "direct": 0.36247673630714417,
+    "left": 0.34237024188041687,
+    "right": 0.46612268686294556
+   }
+  },
+  {
+   "file": "20261114-193747-946.jpg",
+   "part": "test_good",
+   "score": 0.9497642707506811,
+   "views": {
+    "direct": 0.5693318843841553,
+    "left": 0.5139390230178833,
+    "right": 0.49524596333503723
+   }
+  },
+  {
+   "file": "20261114-193818-209.jpg",
+   "part": "calib_good",
+   "score": 0.2931766121054598,
+   "views": {
+    "direct": 0.48077288269996643,
+    "left": 0.3917815685272217,
+    "right": 0.45201921463012695
+   }
+  },
+  {
+   "file": "20261114-192709-855.jpg",
+   "part": "defect",
+   "score": 0.3729672674740921,
+   "views": {
+    "direct": 0.49153485894203186,
+    "left": 0.44390353560447693,
+    "right": 0.45303580164909363
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192714-687.jpg",
+   "part": "defect",
+   "score": 3.5641832657335946,
+   "views": {
+    "direct": 0.530780553817749,
+    "left": 0.8413612246513367,
+    "right": 0.4102925956249237
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192720-824.jpg",
+   "part": "defect",
+   "score": 1.0070034909185077,
+   "views": {
+    "direct": 0.5770521759986877,
+    "left": 0.4584021270275116,
+    "right": 0.39650166034698486
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192733-244.jpg",
+   "part": "defect",
+   "score": 1.9833872581805905,
+   "views": {
+    "direct": 0.7087445259094238,
+    "left": 0.5153047442436218,
+    "right": 0.48222947120666504
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192738-081.jpg",
+   "part": "defect",
+   "score": 2.426826231659601,
+   "views": {
+    "direct": 0.5761333703994751,
+    "left": 0.7230678200721741,
+    "right": 0.557301938533783
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192742-655.jpg",
+   "part": "defect",
+   "score": 1.7180628683511194,
+   "views": {
+    "direct": 0.6729581952095032,
+    "left": 0.4980401396751404,
+    "right": 0.5772516131401062
+   },
+   "type": "marker_dot"
+  },
+  {
+   "file": "20261114-192757-213.jpg",
+   "part": "defect",
+   "score": 1.3619846385503331,
+   "views": {
+    "direct": 0.5970097780227661,
+    "left": 0.6123165488243103,
+    "right": 0.5270231366157532
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192803-479.jpg",
+   "part": "defect",
+   "score": 0.9429238469793799,
+   "views": {
+    "direct": 0.568409264087677,
+    "left": 0.499552845954895,
+    "right": 0.5366750955581665
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192809-040.jpg",
+   "part": "defect",
+   "score": 0.8273883426434069,
+   "views": {
+    "direct": 0.5528261065483093,
+    "left": 0.5121131539344788,
+    "right": 0.4739634096622467
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192819-098.jpg",
+   "part": "defect",
+   "score": 0.2560912116518931,
+   "views": {
+    "direct": 0.44892629981040955,
+    "left": 0.4972955882549286,
+    "right": 0.4621906876564026
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192822-888.jpg",
+   "part": "defect",
+   "score": 0.4193764427189082,
+   "views": {
+    "direct": 0.49779441952705383,
+    "left": 0.444786936044693,
+    "right": 0.40860000252723694
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192826-682.jpg",
+   "part": "defect",
+   "score": 0.2338003470008496,
+   "views": {
+    "direct": 0.4460092782974243,
+    "left": 0.4949771761894226,
+    "right": 0.422040194272995
+   },
+   "type": "marker_smalldot"
+  },
+  {
+   "file": "20261114-192847-886.jpg",
+   "part": "defect",
+   "score": 2.151201471228039,
+   "views": {
+    "direct": 0.7313789129257202,
+    "left": 0.5448458790779114,
+    "right": 0.49360495805740356
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192852-590.jpg",
+   "part": "defect",
+   "score": 2.2825953715072473,
+   "views": {
+    "direct": 0.6762942671775818,
+    "left": 0.7080667614936829,
+    "right": 0.5686855912208557
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192856-707.jpg",
+   "part": "defect",
+   "score": 1.6976666593750462,
+   "views": {
+    "direct": 0.6702072024345398,
+    "left": 0.5945053100585938,
+    "right": 0.5255993008613586
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192901-219.jpg",
+   "part": "defect",
+   "score": 2.7853205539952226,
+   "views": {
+    "direct": 0.8169074058532715,
+    "left": 0.5629566311836243,
+    "right": 0.5163931846618652
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192905-595.jpg",
+   "part": "defect",
+   "score": 0.840897256195786,
+   "views": {
+    "direct": 0.5470091700553894,
+    "left": 0.4552359879016876,
+    "right": 0.5474299192428589
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192910-037.jpg",
+   "part": "defect",
+   "score": 1.4064419892296411,
+   "views": {
+    "direct": 0.6253258585929871,
+    "left": 0.5415065288543701,
+    "right": 0.6200945377349854
+   },
+   "type": "marker_bigdot"
+  },
+  {
+   "file": "20261114-192923-378.jpg",
+   "part": "defect",
+   "score": 0.4051624230540709,
+   "views": {
+    "direct": 0.4958772659301758,
+    "left": 0.47232767939567566,
+    "right": 0.3922736346721649
+   },
+   "type": "marker_line"
+  },
+  {
+   "file": "20261114-192932-792.jpg",
+   "part": "defect",
+   "score": 1.0560482555019142,
+   "views": {
+    "direct": 0.5836672186851501,
+    "left": 0.45829546451568604,
+    "right": 0.5479208827018738
+   },
+   "type": "marker_line"
+  },
+  {
+   "file": "20261114-192936-833.jpg",
+   "part": "defect",
+   "score": 1.3722270575240352,
+   "views": {
+    "direct": 0.6263126730918884,
+    "left": 0.4227505922317505,
+    "right": 0.41087472438812256
+   },
+   "type": "marker_line"
+  },
+  {
+   "file": "20261114-192942-717.jpg",
+   "part": "defect",
+   "score": 0.9128439241910112,
+   "views": {
+    "direct": 0.5643521547317505,
+    "left": 0.5024999380111694,
+    "right": 0.5202919244766235
+   },
+   "type": "marker_line"
+  },
+  {
+   "file": "20261114-192946-770.jpg",
+   "part": "defect",
+   "score": 1.0728901309685503,
+   "views": {
+    "direct": 0.5859388113021851,
+    "left": 0.5601038932800293,
+    "right": 0.5239701867103577
+   },
+   "type": "marker_line"
+  },
+  {
+   "file": "20261114-192950-757.jpg",
+   "part": "defect",
+   "score": 1.3258536775066547,
+   "views": {
+    "direct": 0.6200579404830933,
+    "left": 0.5780037045478821,
+    "right": 0.5701961517333984
+   },
+   "type": "marker_line"
+  }
+ ],
+ "eval_device": "CPU"
+}

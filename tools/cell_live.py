@@ -455,11 +455,12 @@ def install() -> None:
             if L.look >= 2:
                 L.think("look", f"Looking again: {nf} more of the same brick, same pose.")
             else:
-                L.think("look", f"Looking at the brick from {views}, {nf}, with my anomaly model on the "
+                what = "defect classifier" if hasattr(self, "_live_orig_inspect") else "anomaly model"
+                L.think("look", f"Looking at the brick from {views}, {nf}, with my {what} on the "
                                 f"{_dev(getattr(self, 'device', None))}.")
         L.guard("inspect_start", _start)
         calls.clear()
-        res = orig_inspect(self, frames)
+        res = getattr(type(self), "_live_orig_inspect", orig_inspect)(self, frames)
         L.guard("inspect_end", _inspect_end, self, res)
         return res
 
@@ -521,6 +522,32 @@ def install() -> None:
         L.think(*_verdict_thought(res, per_norm, regions_n, look, pending))
 
     orch.AnomalibInspector.inspect = inspect
+
+    # 6b. The supervised defect classifier (tools/brick_classifier.py): the same live hooks; its view crops feed
+    # `calls` like MultiViewScorer does (no anomaly map: the views are shown plain, scored by P(defect)).
+    try:
+        from tools import brick_classifier as bc
+    except Exception:  # noqa: BLE001
+        bc = None
+    if bc is not None:
+        cls_orig_frame = bc.BrickClassifierInspector.score_frame
+
+        def cls_score_frame(self, frame):
+            s, crops, ms = cls_orig_frame(self, frame)
+
+            def _cap():
+                import cv2
+                xs = {n: {"x": (cv2.cvtColor(cv2.resize(c, (self.size, self.size), interpolation=cv2.INTER_AREA),
+                                            cv2.COLOR_BGR2RGB).astype(np.float32) / 255).transpose(2, 0, 1)[None],
+                          "amap": None} for n, c in crops.items()}
+                calls.append({"combined": float(s), "per": dict(self.last_views), "ms": float(ms), "views": xs})
+                del calls[:-12]
+            L.guard("cls_capture", _cap)
+            return s, crops, ms
+
+        bc.BrickClassifierInspector._live_orig_inspect = bc.BrickClassifierInspector.inspect
+        bc.BrickClassifierInspector.inspect = inspect
+        bc.BrickClassifierInspector.score_frame = cls_score_frame
 
     # 7. Remember the configuration once the run starts (models, devices, tasks).
     orig_resolve = orch.Cell.resolve_models
