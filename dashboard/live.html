@@ -45,6 +45,18 @@ body.boot *, body.boot *::before, body.boot *::after{transition:none!important}
 body.running .status i{animation:blink 1.6s steps(1) infinite}
 body.idle .status i{background:transparent;border:1px solid var(--fg3);box-shadow:none}
 @keyframes blink{50%{opacity:.25}}
+/* ---------- run control: Start = go_home + one cell run, Stop = hold the arm (tools/dashboard.py) ---------- */
+.ctl{display:flex;align-items:center;gap:10px}
+.ctl[hidden],.ctl [hidden]{display:none!important}
+.ctl button,.ctl select{font:inherit;font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:transparent;color:var(--fg);border:1px solid rgba(255,255,255,.55);padding:6px 11px 5px;cursor:pointer;border-radius:0}
+.ctl select{padding:5px 6px 4px;letter-spacing:.08em}
+.ctl select option{background:#111;color:#f3f3f0}
+.ctl button:hover{background:rgba(255,255,255,.10)}
+.ctl button.arm{background:var(--fg);color:var(--bg)}
+.ctl button:disabled{opacity:.35;cursor:default;background:transparent}
+.ctl .msg{font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);max-width:380px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctl .msg.err{color:#ffb38a}
+body.kiosk .ctl{display:none!important}
 
 /* ---------- stage ---------- */
 .stage{position:fixed;left:0;right:0;top:var(--top);bottom:calc(var(--bot) + var(--sub));display:grid;place-items:center;pointer-events:none}
@@ -245,6 +257,15 @@ img:not([src]){visibility:hidden}
 <header class="hud-top">
   <div class="brand"><b>CHECKURAI</b><span>Autonomous sorting cell</span></div>
   <div class="tally">
+    <div class="ctl" id="ctl" hidden>
+      <span class="msg" id="ctlMsg"></span>
+      <select id="ctlN" title="Bricks to sort in this run" aria-label="Bricks to sort">
+        <option value="1">1 brick</option><option value="3">3 bricks</option><option value="5">5 bricks</option><option value="10">10 bricks</option>
+      </select>
+      <button id="ctlGo" type="button" data-mode="act" data-label="Start" title="ACT policies on the NPU (demo config): arm goes HOME, then the cell sorts the bricks">Start</button>
+      <button id="ctlVla" type="button" data-mode="vla" data-label="Start · SmolVLA" title="One SmolVLA (A100, pick + place) on the iGPU, the verdict as its instruction">Start · SmolVLA</button>
+      <button id="ctlStop" type="button" title="Hold the arm and end the run" hidden>Stop</button>
+    </div>
     <span class="badge" id="badge"></span>
     <div class="status"><i></i><span id="status">Connecting</span></div>
   </div>
@@ -809,6 +830,59 @@ async function poll(){
 }
 addEventListener("resize", () => { if (last && document.body.classList.contains("v-views")) flipFromFrame((last.camera || {}).inspection_rects); });
 poll();
+})();
+</script>
+<script>
+/* run control (tools/dashboard.py CellRunner): Start = go_home + tools/cell_live.py in the demo config,
+   two clicks (the second within 4 s confirms the cell is clear); Stop = the cell's own "s": hold the arm, end the run */
+(function(){
+  const $ = id => document.getElementById(id);
+  const box = $("ctl"), go = $("ctlGo"), vla = $("ctlVla"), stop = $("ctlStop"), n = $("ctlN"), msg = $("ctlMsg");
+  const starts = [go, vla];
+  if (/[?&]kiosk\b/.test(location.search)) document.body.classList.add("kiosk");
+  let armed = 0, armedBtn = null, sending = false, note = "", noteUntil = 0;
+  const post = (path, body) => fetch(path, {method: "POST", headers: {"Content-Type": "application/json", "X-Checkurai": "1"},
+    body: JSON.stringify(body || {})}).then(r => r.json()).catch(e => ({ok: false, msg: String(e)}));
+  function say(t, err){ msg.textContent = t || ""; msg.title = t || ""; msg.classList.toggle("err", !!err); }
+  function flash(t, err){ note = t; noteUntil = Date.now() + 5000; say(t, err); }
+  function disarm(){ armed = 0; armedBtn = null; starts.forEach(b => { b.classList.remove("arm"); b.textContent = b.dataset.label; }); }
+  starts.forEach(btn => btn.addEventListener("click", async () => {
+    if (sending || btn.disabled) return;
+    if (armedBtn !== btn){
+      disarm(); armed = Date.now(); armedBtn = btn; btn.classList.add("arm"); btn.textContent = "Cell clear? " + btn.dataset.label;
+      const mine = armed;
+      setTimeout(() => { if (armed === mine) disarm(); }, 4000);
+      return;
+    }
+    disarm(); sending = true; starts.forEach(b => b.disabled = true); flash("starting");
+    const r = await post("/api/run/start", {cycles: +n.value, mode: btn.dataset.mode});
+    sending = false; starts.forEach(b => b.disabled = false);
+    if (!r.ok) flash(r.msg || "could not start", true); else render(r);
+  }));
+  stop.addEventListener("click", async () => { const r = await post("/api/run/stop"); flash(r.msg || "", !r.ok); });
+  const clean = t => (t || "").replace(/^\[cell\]\s*/, "");
+  function render(s){
+    if (!s || s.phase === "disabled"){ box.hidden = true; return; }
+    box.hidden = false;
+    const active = ["homing", "running", "stopping"].includes(s.phase);
+    starts.forEach(b => { b.hidden = active; if (!sending) b.disabled = !!s.other_pid; }); n.hidden = active;
+    stop.hidden = !active || s.phase === "stopping";
+    const who = s.mode === "vla" ? "SmolVLA · " : "";
+    if (Date.now() < noteUntil) return;
+    const last = clean((s.lines || []).slice(-1)[0]);
+    if (s.phase === "homing") say(who + "arm going home");
+    else if (s.phase === "running") say(who + (last ? last : `running · ${s.cycles} brick${s.cycles > 1 ? "s" : ""}`));
+    else if (s.phase === "stopping") say("stopping · arm holds");
+    else if (s.other_pid) say("cell busy · run started elsewhere");
+    else if (s.phase === "failed") say(who + "stopped · " + last, true);
+    else if (s.phase === "done" && s.ended_age_s < 180) say(who + "done · " + last);
+    else if (!armed) say("");
+  }
+  async function poll(){
+    try { const r = await fetch("/api/run", {cache: "no-store"}); if (r.ok) render(await r.json()); } catch (e) {}
+    finally { setTimeout(poll, 1000); }
+  }
+  poll();
 })();
 </script>
 </body>

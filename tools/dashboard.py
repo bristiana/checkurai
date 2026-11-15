@@ -2,6 +2,7 @@
 """Jury dashboard server: one page that shows what the cell is doing, why, and what it costs.
 
     python tools/dashboard.py                    # http://127.0.0.1:8770 on the station laptop
+    # the page's Start button runs go_home + tools/cell_live.py (demo config); Stop holds the arm (logs/dashboard_runs.log)
     # on the ThinkPad:  ssh -N -L 8770:localhost:8770 intel   then open http://localhost:8770
 
 Reads, never writes:
@@ -20,9 +21,11 @@ import json
 import os
 import re
 import statistics as st
+import subprocess
 import sys
 import threading
 import time
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -456,6 +459,157 @@ def clean(o: Any) -> Any:
     return o
 
 
+
+# ------------------------------------------------------------------------------------------- run control
+# The page's Start button: go_home, then one cell run in the demo config (ACT on the NPU, the classifier from
+# config/cell.json on its device, --no-align, as the filmed takes). Stop sends the cell's own "s" (hold the arm, end).
+# One run at a time, and none while a cell run started elsewhere (terminal, another session) is active.
+RUN_LOG = ROOT / "logs" / "dashboard_runs.log"
+VLA_MODEL = "smolvla-pick-place-v7-a100"  # one SmolVLA for pick and both places (run 20261114-230221: sorted in 52.6 s)
+RUN_MODES = {  # cell_live.py options before "run", per button
+    "act": ["--device", "NPU"],  # the demo config: ACT models from config/cell.json on the NPU
+    "vla": ["--device", "GPU", "--pick-model", VLA_MODEL, "--place-good-model", VLA_MODEL, "--place-bad-model", VLA_MODEL],
+}
+CYCLE_LIMIT_S = 240  # watchdog per brick: past it the run gets a stop, then a terminate
+RUN_ENABLED = "CHECKURAI_LIVE_DIR" not in os.environ and os.environ.get("CHECKURAI_RUN_CONTROL", "1") == "1"  # off on test servers
+
+
+class CellRunner:
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.proc: subprocess.Popen | None = None
+        self.phase = "idle"  # idle | homing | running | stopping | done | failed
+        self.cycles = 0
+        self.mode = "act"
+        self.started: float | None = None
+        self.ended: float | None = None
+        self.code: int | None = None
+        self.lines: deque[str] = deque(maxlen=8)
+
+    @staticmethod
+    def other_run() -> str | None:
+        """pid of a cell run (cell_live / orchestrator 'run') or go_home not started by this server."""
+        me = os.getpid()
+        for d in Path("/proc").iterdir():
+            if not d.name.isdigit():
+                continue
+            try:
+                args = [a.decode(errors="replace") for a in (d / "cmdline").read_bytes().split(b"\0") if a]
+                ppid = int((d / "stat").read_text().rsplit(")", 1)[1].split()[1])
+            except (OSError, ValueError, IndexError):
+                continue
+            if ppid == me or int(d.name) == me:
+                continue
+            tools = [a for a in args if a.endswith(("tools/cell_live.py", "tools/orchestrator.py", "tools/go_home.py"))]
+            if tools and (tools[0].endswith("go_home.py") or "run" in args):
+                return d.name
+        return None
+
+    def status(self) -> dict[str, Any]:
+        if not RUN_ENABLED:
+            return {"phase": "disabled"}
+        now = time.time()
+        return {"phase": self.phase, "cycles": self.cycles, "mode": self.mode, "code": self.code, "lines": list(self.lines),
+                "started_age_s": None if self.started is None else round(now - self.started, 1),
+                "ended_age_s": None if self.ended is None else round(now - self.ended, 1),
+                "other_pid": None if self.phase in ("homing", "running", "stopping") else self.other_run()}
+
+    def start(self, cycles: int, mode: str = "act") -> tuple[bool, str]:
+        if not RUN_ENABLED:
+            return False, "run control is off on this server"
+        with self.lock:
+            if self.phase in ("homing", "running", "stopping"):
+                return False, "a run from this page is still going"
+            other = self.other_run()
+            if other:
+                return False, f"another cell run is active (pid {other})"
+            self.phase, self.cycles, self.mode, self.code = "homing", cycles, mode, None
+            self.started, self.ended = time.time(), None
+            self.lines.clear()
+            threading.Thread(target=self._run, args=(cycles, mode), daemon=True).start()
+            return True, "started"
+
+    def stop(self) -> tuple[bool, str]:
+        with self.lock:
+            p = self.proc
+            if self.phase != "running" or p is None or p.poll() is not None:
+                return False, "nothing to stop"
+            try:
+                p.stdin.write("s\n")
+                p.stdin.flush()
+            except (OSError, ValueError) as e:
+                return False, repr(e)
+            self.phase = "stopping"
+            return True, "stop sent: the arm holds and the run ends"
+
+    def _note(self, log, line: str) -> None:
+        log.write(line + "\n")
+        log.flush()
+        t = line.strip()
+        if t.startswith("[cell]") or "Error" in t or t.startswith(("follower is at HOME", "done; worst joint")):
+            self.lines.append(t[:200])
+
+    def _run(self, cycles: int, mode: str) -> None:
+        RUN_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with RUN_LOG.open("a") as log:
+            self._note(log, f"=== {time.strftime('%Y-%m-%d %H:%M:%S')} dashboard Start ({mode}): {cycles} brick(s) ===")
+            try:
+                h = subprocess.run([sys.executable, "tools/go_home.py"], cwd=ROOT, capture_output=True, text=True,
+                                   timeout=120)
+                for line in (h.stdout + h.stderr).splitlines():
+                    self._note(log, line)
+                if h.returncode != 0:
+                    self.lines.append("go_home failed: the arm is not HOME (check the 12 V plug / power-cycle)")
+                    self._finish(h.returncode, "failed")
+                    return
+                cmd = [sys.executable, "-u", "tools/cell_live.py", *RUN_MODES[mode], "run", "--cycles", str(cycles),
+                       "--no-align", "--yes"]
+                self._note(log, "$ " + " ".join(cmd[1:]))
+                with self.lock:
+                    self.proc = subprocess.Popen(cmd, cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                                 stderr=subprocess.STDOUT, text=True, bufsize=1)
+                    self.phase = "running"
+                proc = self.proc
+                limit = time.time() + CYCLE_LIMIT_S * cycles + 90
+                watchdog = threading.Thread(target=self._watchdog, args=(proc, limit), daemon=True)
+                watchdog.start()
+                for line in proc.stdout:
+                    self._note(log, line.rstrip("\n"))
+                code = proc.wait()
+                self._finish(code, "done" if code == 0 else "failed")
+            except Exception as e:  # noqa: BLE001 - report on the page, never kill the server
+                self._note(log, f"dashboard runner error: {e!r}")
+                self._finish(-1, "failed")
+
+    def _watchdog(self, proc: subprocess.Popen, limit: float) -> None:
+        while proc.poll() is None:
+            if time.time() > limit:
+                self.lines.append("watchdog: run took too long, sending stop")
+                try:
+                    proc.stdin.write("s\n")
+                    proc.stdin.flush()
+                except (OSError, ValueError):
+                    pass
+                for _ in range(40):
+                    if proc.poll() is not None:
+                        return
+                    time.sleep(0.5)
+                proc.terminate()
+                return
+            time.sleep(1)
+
+    def _finish(self, code: int, phase: str) -> None:
+        with self.lock:
+            self.code, self.phase, self.ended = code, phase, time.time()
+            if self.proc is not None and self.proc.stdin:
+                try:
+                    self.proc.stdin.close()
+                except OSError:
+                    pass
+
+
+runner = CellRunner()
+
 # ------------------------------------------------------------------------------------------- http
 IMG_RE = re.compile(r"^/img/([a-z0-9_]{1,40})\.jpg$")
 
@@ -481,6 +635,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
             elif path == "/v1":  # the first, denser page (fallback)
                 self._send(200, (ROOT / "dashboard" / "index.html").read_bytes(), "text/html; charset=utf-8")
+            elif path == "/api/run":
+                self._send(200, json.dumps(runner.status()).encode(), "application/json")
             elif path == "/api/state":
                 self._send(200, json.dumps(clean(build_state()), default=str, allow_nan=False).encode(), "application/json")
             elif (m := IMG_RE.match(path)):
@@ -496,6 +652,41 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:  # noqa: BLE001 - never kill the server
             try:
                 self._send(500, json.dumps({"error": repr(e)}).encode(), "application/json")
+            except OSError:
+                pass
+
+
+    def do_POST(self) -> None:  # noqa: N802
+        """POST /api/run/start {"cycles": n, "mode": "act"|"vla"} and /api/run/stop. Only from this page: a custom header (so another
+        site's page can't send it without a CORS preflight, which this server never answers) and a local Origin."""
+        path = self.path.split("?", 1)[0]
+        try:
+            origin = self.headers.get("Origin") or ""
+            local = origin == "" or re.match(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$", origin) is not None
+            if self.headers.get("X-Checkurai") != "1" or not local:
+                self._send(403, b'{"ok":false,"msg":"forbidden"}', "application/json")
+                return
+            n = int(self.headers.get("Content-Length") or 0)
+            body = json.loads(self.rfile.read(n) or b"{}") if 0 < n < 10000 else {}
+            if path == "/api/run/start":
+                cycles = max(1, min(10, int(body.get("cycles", 1))))
+                mode = body.get("mode", "act")
+                if mode not in RUN_MODES:
+                    self._send(400, b'{"ok":false,"msg":"unknown mode"}', "application/json")
+                    return
+                ok, msg = runner.start(cycles, mode)
+            elif path == "/api/run/stop":
+                ok, msg = runner.stop()
+            else:
+                self._send(404, b'{"ok":false,"msg":"not found"}', "application/json")
+                return
+            self._send(200 if ok else 409, json.dumps({"ok": ok, "msg": msg, **runner.status()}).encode(),
+                       "application/json")
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        except Exception as e:  # noqa: BLE001 - never kill the server
+            try:
+                self._send(500, json.dumps({"ok": False, "msg": repr(e)}).encode(), "application/json")
             except OSError:
                 pass
 
