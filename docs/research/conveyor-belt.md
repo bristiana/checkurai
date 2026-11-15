@@ -117,7 +117,7 @@ Use the **RealSense depth** over the pick-tray region: no extra hardware, and it
    - Is there a spare **STS3215 + Waveshare bus servo adapter + power supply**? Otherwise, does the "Atech motherboard + modules" bag have a **DC Motor + Distance + Power Jack** module and a 5–9 V supply?
    - Which **filament** is there, and can we use **7–8 printers in parallel overnight**?
    - Any M2/M3 screws?
-2. **Intel (Rajesh / Marvin, Discord or 5th floor):** is an extra fixture like a conveyor OK, and how will judges place bricks during evaluation?
+2. **Intel team (Discord or 5th floor):** is an extra fixture like a conveyor OK, and how will judges place bricks during evaluation?
 3. Measure the table depth, tape out the layout, and check reach with the leader arm.
 4. Generate the 3MF on MakerWorld (settings above), split to plates and queue the prints by ~01:00.
 5. Sat ~06:00–08:30: assemble, mount the drive, run the belt test script. **Record the real demos only after the belt is fixed in place.**

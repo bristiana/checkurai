@@ -1,5 +1,13 @@
 # CheckurAI: Intel "See It. Detect It. Act on It." plan
 
+> **Status (Sun 15 Nov 2026, end of the event).** This is the plan the team wrote and followed during the hackathon, kept
+> as written. What was actually built is described in [README.md](../README.md). **Not built:** the watchdog that turns
+> torque off and the spacebar kill (the stop is typing `s` + Enter, which holds the arm), the 3D grasp check and
+> automatic re-grasp, the Rerun 3D twin, `SharedCamera` / our own runtime loop (the cell drives Studio's runtime
+> session websocket instead, unlike D8), NNCF INT8 export, the live device switch, PatchCore on the NPU (its NPU
+> compile fails; it runs on the iGPU), the conveyor belt, the data loop, CPU pinning. SmolVLA place policies were
+> trained but are not used by the cell program. Re-inspecting uncertain bricks was added at the very end.
+
 Decided on Fri 13 Nov 2026, ~23:30 Helsinki time. **The laptop clock is on PST (Helsinki minus 10 h)**, so timestamps in logs, datasets and git use PST.
 
 This is the team's working plan. Every person and agent works from it. If a decision changes, change it here in the same commit.
@@ -289,12 +297,12 @@ any state ─[safety violation / watchdog / spacebar]→ STOP (torque off)
     - Use an edge port. The board sits on a printed cradle beside the belt's drive end, with a coupler from 3 mm to the TT double-D.
     - Generate the belt's 3MF with the TT-motor drive side.
   - **Speed check:** `dc_motor_speed 255` with no load, count turns in 10 s. Target belt speed is about 4–6 cm/s.
-  - Ask Intel (Rajesh/Marvin) whether a conveyor fixture is OK and how the judges will place bricks.
+  - Ask the Intel team whether a conveyor fixture is OK and how the judges will place bricks.
 - [ ] **CRACI (tech challenge "Best use of CRACI"). Do it only after the full loop works (the Sat 18:00 checkpoint in §10 has passed).**
   - Already in the repo: `.github/workflows/craci.yml`. It runs the same checks as `guard.yml` on `runs-on: craci`, then downloads the SBOM CRACI recorded for that job and attaches it to the run (artifact `craci-sbom`, and a component table in the run summary). `guard.yml` stays on GitHub's runners.
   - **The repo owner (bristiana) must do these steps, in a browser:**
-    1. Sign up at platform.craci.com. Ask Roope at the CRACI booth (3rd floor, left of the stage) for the Junction onboarding.
-    2. In CRACI, go to Settings → Builds → Install GitHub and install the app on `checkurai`. The docs describe GitHub **organizations**, so ask Roope whether a personal account works. If an org is needed: `gitleaks-action` needs a licence key on org repos, so drop that step from `craci.yml`.
+    1. Sign up at platform.craci.com. Ask the CRACI team at their booth for the Junction onboarding.
+    2. In CRACI, go to Settings → Builds → Install GitHub and install the app on `checkurai`. The docs describe GitHub **organizations**, so ask CRACI whether a personal account works. If an org is needed: `gitleaks-action` needs a licence key on org repos, so drop that step from `craci.yml`.
     3. Create a CRACI API token and save it as the repo secret `CRACI_API_TOKEN` (GitHub → Settings → Secrets and variables → Actions).
   - **Check:** Actions → craci → Run workflow. `craci-guard` gets a CRACI runner, and `sbom` uploads `craci-sbom`.
   - **Make the SBOM worth showing:** add a step to `craci-guard` that installs the cell's Python stack (OpenVINO, Anomalib, the `physicalai` runtime). The SBOM then lists everything the internet ships into the robot. Then ask CRACI's API for the job's network trace and vulnerability data.
