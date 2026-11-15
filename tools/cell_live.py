@@ -74,6 +74,8 @@ class Live:
         self.phase = "before"  # which spot check comes next: before (the pick) / after_pick / after_place
         self.last_grab: list | None = None  # the frames of the latest inspection-camera grab
         self.prev_outcome: dict[str, str | None] = {}  # pick / place: how the previous run of that stage ended
+        self.look = 0                # inspections of this brick so far (2 = the orchestrator's re-inspection)
+        self.reinspect_on = True     # the cell's --reinspect-uncertain switch (set at each cycle start)
         self.write(force=True)
 
     # ---- decision graph: where this brick is in Cell.cycle (node ids as in the dashboard brief)
@@ -348,6 +350,8 @@ def install() -> None:
         def _start():
             L.phase = "before"
             L.prev_outcome = {}
+            L.look = 0
+            L.reinspect_on = bool(getattr(self.a, "reinspect_uncertain", True))
             with L.lock:
                 L.state["graph"] = {"cycle": i, "current": "home_check", "visited": [], "branch": None,
                                     "retries": {"pick": 0, "place": 0}, "rehomes": {"pick": 0, "place": 0},
@@ -438,16 +442,21 @@ def install() -> None:
 
     def inspect(self, frames):
         def _start():
-            L.event("inspecting the brick", stage="inspect", stage_started=time.time())
-            L.node("inspect", on_spot=True)
+            L.look += 1
+            L.event("inspecting the brick" if L.look < 2 else "inspecting the brick again", stage="inspect",
+                    stage_started=time.time())
+            L.node("inspect", on_spot=True, **({"reinspect": "looking"} if L.look >= 2 else {}))
             with L.lock:
                 L.state["inspect_progress"] = {"done": 0, "of": len(frames)}
             if frames:
                 L.publish_inspection_frame(frames[len(frames) // 2], "inspect", _view_rects(self))
             views = "3 sides (front + 2 mirrors)" if getattr(self, "views", False) else "the inspection camera"
             nf = f"{len(frames)} frame{'s' if len(frames) != 1 else ''}"
-            L.think("look", f"Looking at the brick from {views}, {nf}, with my anomaly model on the "
-                            f"{_dev(getattr(self, 'device', None))}.")
+            if L.look >= 2:
+                L.think("look", f"Looking again: {nf} more of the same brick, same pose.")
+            else:
+                L.think("look", f"Looking at the brick from {views}, {nf}, with my anomaly model on the "
+                                f"{_dev(getattr(self, 'device', None))}.")
         L.guard("inspect_start", _start)
         calls.clear()
         res = orig_inspect(self, frames)
@@ -455,6 +464,14 @@ def install() -> None:
         return res
 
     def _inspect_end(self, res) -> None:
+        look = L.look
+        if look >= 2 and res.verdict == "empty":  # the orchestrator then keeps the first look (unsure -> defect)
+            L.node("decide", branch="unsure", verdict_t=round(time.time(), 2), reinspect="no brick")
+            L.think("warn", "Looking again I didn't see the brick, so the first inspection stands: "
+                            "unsure → defect bowl, to be safe.")
+            return
+        # an uncertain first look: the orchestrator inspects it again before it decides (stay on "inspect")
+        pending = bool(res.uncertain and res.verdict != "empty" and look == 1 and L.reinspect_on)
         cyc = L.state.get("cycle")
         info: dict[str, Any] = {"cycle": cyc, "t": time.time(), "verdict": res.verdict, "uncertain": res.uncertain,
                                 "score": res.score, "low": res.low, "high": res.high, "frames": res.frames,
@@ -486,16 +503,22 @@ def install() -> None:
                 L.put_image(f"hist_{cyc}", _jpeg(cv2.resize(thumb, (160, 160), interpolation=cv2.INTER_AREA), 80))
         place = "place_good" if res.verdict == "good" else "place_bad"
         cell_args = L.state.get("cfg") or {}
+        info["look"] = look
         decision = {"verdict": res.verdict, "uncertain": res.uncertain, "score": res.score, "low": res.low, "high": res.high,
-                    "next": None if res.verdict == "empty" else place,
+                    "next": None if res.verdict == "empty" or pending else place, "look": look,
                     "policy": cell_args.get(f"{place}_model"), "task": cell_args.get(f"{place}_task") or orch.TASKS.get(place)}
-        L.event(f"verdict: {res.verdict}{' (uncertain)' if res.uncertain else ''} {res.score}", stage="reason",
-                stage_started=time.time(), inspection=info, decision=decision,
-                explanation=_explanation(res, per_norm, regions_n))
-        branch = "empty" if res.verdict == "empty" else "good" if res.verdict == "good" else \
-            "unsure" if res.uncertain else "defect"
-        L.node("decide", branch=branch, verdict_t=round(time.time(), 2))
-        L.think(*_verdict_thought(res, per_norm, regions_n))
+        L.event(f"verdict: {res.verdict}{' (uncertain)' if res.uncertain else ''} {res.score}"
+                f"{' (look ' + str(look) + ')' if look >= 2 or pending else ''}",
+                stage="inspect" if pending else "reason", stage_started=time.time(), inspection=info, decision=decision,
+                explanation=_explanation(res, per_norm, regions_n, look, pending))
+        if pending:
+            L.graph_set(reinspect="pending")
+        else:
+            branch = "empty" if res.verdict == "empty" else "good" if res.verdict == "good" else \
+                "unsure" if res.uncertain else "defect"
+            L.node("decide", branch=branch, verdict_t=round(time.time(), 2),
+                   **({"reinspect": "done"} if look >= 2 else {}))
+        L.think(*_verdict_thought(res, per_norm, regions_n, look, pending))
 
     orch.AnomalibInspector.inspect = inspect
 
@@ -509,7 +532,8 @@ def install() -> None:
     def _cfg(self) -> None:
         a = self.a
         cfg = {k: getattr(a, k, None) for k in ("device", "anomaly_device", "anomaly_model", "frames", "hz", "execution",
-                                                "request_threshold", "backend", "cycles", "only")}
+                                                "request_threshold", "backend", "cycles", "only", "reinspect_uncertain",
+                                                "reinspect_frames")}
         for st in ("pick", "place_good", "place_bad"):
             cfg[f"{st}_model"] = self.models.get(st, {}).get("name") or getattr(a, f"{st}_model", None)
             cfg[f"{st}_task"] = getattr(a, f"{st}_task", None) or orch.TASKS.get(st)
@@ -566,22 +590,27 @@ def install() -> None:
     atexit.register(_ended)
 
 
-def _verdict_thought(res, per: dict[str, float], regions_n: int) -> tuple[str, str]:
+def _verdict_thought(res, per: dict[str, float], regions_n: int, look: int = 1, pending: bool = False) -> tuple[str, str]:
     if res.verdict == "empty":
         return "warn", "Hmm, I don't see a brick on the spot."
     lo, hi = res.low or 1.0, res.high or 2.0
+    pre = "Looking again: " if look >= 2 else ""
     if not per:
-        return "decide", f"Score {res.score:.2f} → {res.verdict.upper()}."
+        return "decide", f"{pre}Score {res.score:.2f} → {'look again' if pending else res.verdict.upper()}."
     worst = max(per, key=per.get)
     name, s = VIEW_NAMES.get(worst, worst), per[worst]
     spots = f" ({regions_n} unusual spot{'s' if regions_n != 1 else ''})" if regions_n else ""
     if res.verdict == "good":
-        return "decide", (f"All 3 views look like the good bricks I learned (worst: {s:.2f}, my limit is {lo:.2f}). "
+        return "decide", (f"{pre}All 3 views look like the good bricks I learned (worst: {s:.2f}, my limit is {lo:.2f}). "
                           "Verdict: GOOD → good bowl.")
     if res.uncertain:
-        return "decide", (f"{name} looks a bit unusual{spots}: {s:.2f}, above my good limit {lo:.2f} but below my defect "
-                          f"line {hi:.2f}. I'm not sure, so to be safe it goes to the defect bowl.")
-    return "decide", f"{name} shows a defect{spots}: {s:.2f}, past my defect line {hi:.2f}. Verdict: DEFECT → defect bowl."
+        then = ("I'm not sure yet, so I'll look again." if pending else
+                "Still not sure, so to be safe it goes to the defect bowl." if look >= 2 else
+                "I'm not sure, so to be safe it goes to the defect bowl.")
+        return "decide", (f"{pre}{name} looks a bit unusual{spots}: {s:.2f}, above my good limit {lo:.2f} but below my "
+                          f"defect line {hi:.2f}. {then}")
+    return "decide", (f"{pre}{name} shows a defect{spots}: {s:.2f}, past my defect line {hi:.2f}. "
+                      "Verdict: DEFECT → defect bowl.")
 
 
 def _view_rects(inspector) -> dict | None:
@@ -594,8 +623,19 @@ def _view_rects(inspector) -> dict | None:
             for n, r in sv["views"].items()}
 
 
-def _explanation(res, per: dict[str, float], regions_n: int) -> dict[str, Any]:
-    """The decision in one line, from the actual numbers (the same rule as AnomalibInspector.inspect)."""
+def _explanation(res, per: dict[str, float], regions_n: int, look: int = 1, pending: bool = False) -> dict[str, Any]:
+    """The decision in one line, from the actual numbers (the same rule as AnomalibInspector.inspect and the
+    orchestrator's re-inspection: an uncertain first look is looked at again; still uncertain -> defect bowl)."""
+    e = _explanation1(res, per, regions_n)
+    if pending:
+        e.update(text=e["text"].split(" → ")[0] + " → unsure → looking again", bowl=None)
+    elif look >= 2 and res.verdict != "empty":
+        e["text"] = "Looking again: " + e["text"].replace("→ unsure → defect bowl, to be safe", "→ still unsure → defect bowl")
+    e["look"] = look
+    return e
+
+
+def _explanation1(res, per: dict[str, float], regions_n: int) -> dict[str, Any]:
     lo, hi = res.low or 1.0, res.high or 2.0
     labels = {"direct": "Front", "left": "Left mirror", "right": "Right mirror"}
     if res.verdict == "empty":

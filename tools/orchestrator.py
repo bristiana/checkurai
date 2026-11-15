@@ -6,7 +6,8 @@ One cycle:
   2. pick        ACT policy "pick" runs until the arm is back at HOME and still
   3. spot check  a brick must now be on the spot, otherwise the pick is retried
   4. inspect     N frames from the inspection camera, median anomaly score: good / defect / uncertain
-  5. place       ACT policy "place_good" or "place_bad"; uncertain bricks go to the defective bowl
+  5. place       ACT policy "place_good" or "place_bad"; an uncertain brick is inspected again (fresh frames,
+                 same pose); still uncertain -> the defective bowl
   6. spot check  the spot must be empty again
   7. log         one JSON line per cycle, plus the inspection crop and a top-camera frame
 
@@ -494,6 +495,7 @@ class Inspection:
     high: float | None = None
     model: str = ""
     crop: np.ndarray | None = field(default=None, repr=False)
+    frame_scores: list[float] = field(default_factory=list)  # per frame, to see how much a re-inspection can move
 
     def log(self) -> dict[str, Any]:
         d = asdict(self)
@@ -551,7 +553,7 @@ class AnomalibInspector:
             verdict = self.force
         mid = crops[int(np.argsort(scores)[len(scores) // 2])]
         return Inspection(verdict, round(score, 4), uncertain, round(frac, 5), len(frames), round(float(np.median(ms)), 2),
-                          self.low, self.high, self.model_name, mid)
+                          self.low, self.high, self.model_name, mid, [round(float(s), 4) for s in scores])
 
 
 # --------------------------------------------------------------------------------------------
@@ -652,6 +654,28 @@ class Cell:
             return True, -1.0
         return self.inspector.spot(self.camera.grab(3))
 
+    async def reinspect(self, rec: dict[str, Any], first: Inspection) -> Inspection:
+        """An uncertain verdict gets one more look before the cell decides: fresh frames, same model, same thresholds.
+        The brick has not moved (same pose on the spot), so this mostly averages out frame noise (exposure, flicker,
+        the arm's shadow leaving); it cannot reveal a face the cameras don't see. A real re-grasp would need a policy
+        that picks the brick off the spot, which we don't have. Still uncertain -> defect bowl, as before (fail-safe).
+        rec["inspection"] then holds the deciding look, plus looks=2 and the other look."""
+        n = int(getattr(self.a, "reinspect_frames", 5))
+        print(f"[cell] uncertain ({first.score}); inspecting again with {n} fresh frames", flush=True)
+        await asyncio.sleep(float(getattr(self.a, "reinspect_wait", 1.0)))
+        t = time.perf_counter()
+        again = self.inspector.inspect(self.camera.grab(n))
+        second = {**again.log(), "total_ms": round((time.perf_counter() - t) * 1000, 1)}
+        first_rec = rec["inspection"]
+        if again.verdict == "empty":  # the brick was not seen this time (should not happen): keep the first look
+            rec["inspection"] = {**first_rec, "looks": 2, "decided_by": "first", "reinspection": second}
+            print("[cell] re-inspection: no brick seen; keeping the first inspection (uncertain -> defect)", flush=True)
+            return first
+        rec["inspection"] = {**second, "looks": 2, "decided_by": "second", "first_inspection": first_rec}
+        print(f"[cell] re-inspection: {again.verdict} {again.score}{' (still uncertain)' if again.uncertain else ''}",
+              flush=True)
+        return again
+
     def save_evidence(self, cycle: int, insp: Inspection) -> dict[str, str]:
         import cv2
 
@@ -698,6 +722,8 @@ class Cell:
                 t = time.perf_counter()
                 insp = self.inspector.inspect(self.camera.grab(self.a.frames))
                 rec["inspection"] = {**insp.log(), "total_ms": round((time.perf_counter() - t) * 1000, 1)}
+                if insp.uncertain and insp.verdict != "empty" and getattr(self.a, "reinspect_uncertain", True):
+                    insp = await self.reinspect(rec, insp)
                 rec["evidence"] = self.save_evidence(i, insp)
                 verdict = insp.verdict
             else:
@@ -877,6 +903,13 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--anomaly-model", default=cfg.get("anomaly_model", "patchcore_384"))
     ap.add_argument("--anomaly-device", default=cfg.get("anomaly_device", "GPU"))
     ap.add_argument("--frames", type=int, default=cfg.get("frames", 9), help="inspection frames per brick (median)")
+    ap.add_argument("--reinspect-uncertain", action=argparse.BooleanOptionalAction, default=cfg.get("reinspect_uncertain", True),
+                    help="an uncertain verdict takes one more look (fresh frames, same pose) before it decides; "
+                         "still uncertain -> defect bowl")
+    ap.add_argument("--reinspect-frames", type=int, default=cfg.get("reinspect_frames", 5),
+                    help="frames for the re-inspection (median)")
+    ap.add_argument("--reinspect-wait", type=float, default=cfg.get("reinspect_wait", 1.0),
+                    help="seconds to wait before the re-inspection")
     ap.add_argument("--camera-name", default=cfg.get("camera_name", "Webcam Audio"))
     ap.add_argument("--camera-device", default=cfg.get("camera_device"))
     sub = ap.add_subparsers(dest="cmd", required=True)
