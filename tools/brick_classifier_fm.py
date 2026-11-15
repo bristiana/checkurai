@@ -2,11 +2,15 @@
 """Supervised good / defect brick classifier: frozen foundation-model features (DINOv2 ViT-S/14) + a linear head.
 
     python tools/brick_classifier_fm.py train --name fm_dinov2s_224          # features, synthetic defects, head
+    python tools/brick_classifier_fm.py export --name fm_dinov2s_224         # backbone -> OpenVINO IR + GPU/NPU/CPU ms
     python tools/brick_classifier_fm.py eval --name fm_dinov2s_224           # held-out goods + real defect photos
     python tools/brick_classifier_fm.py live --name fm_dinov2s_224           # tonight's live cycles (data/cell_runs)
 
     from tools.brick_classifier_fm import BrickClassifierFM
-    clf = BrickClassifierFM("fm_dinov2s_224"); r = clf.inspect(frames)   # r.verdict / r.score / r.uncertain
+    clf = BrickClassifierFM("fm_dinov2s_224", device="GPU"); r = clf.inspect(frames)   # r.verdict / r.score / r.uncertain
+
+At run time (BrickClassifierFM, eval, live) the backbone is the OpenVINO IR backbone.xml on --device (GPU default,
+NPU or CPU); PyTorch is only used for training and as the export reference. The head is a numpy dot product.
 
 Crops are the b2all crop format (data/inspection_crops_views_b2all/PREPROC.md), made at run time exactly like
 inspection.MultiViewScorer does for a fill model: each view rectangle is brought to its empty reference's exposure,
@@ -20,7 +24,10 @@ Training: the b2all train goods (3 sessions) with photometric augmentation (brig
 highlight blobs; all labelled good) and synthetic defects (1-6 dark marker strokes / dots / scribbles inside the brick
 outline, width 2-8 px, alpha 0.6-1, slight blur). The real defect photos are only used for validation (unless
 --real-defects half). A photo's score = max over its three views of P(defect); one fixed threshold.
-Model files: models/classifier/<name>/{head.npz, config.json, backbone.pth, <view>_empty.png/json}.
+Model files: models/classifier/<name>/{head.npz, config.json, backbone.xml/bin (OpenVINO), backbone.pth (torch reference),
+<view>_empty.png/json, synth_examples.jpg}; numbers in results/classifier/<name>.json and <name>_live.json.
+Heavy jobs share the laptop with the live cell: run them through /tmp/cellsafe.sh (freezes them during a cell run);
+the script also waits for a quiet cell at start, runs at nice 19 and on --cpus cores.
 """
 
 from __future__ import annotations
@@ -483,7 +490,8 @@ def cmd_live(args) -> None:
     rows = []
     for f in sorted(glob.glob(str(ROOT / "data" / "cell_runs" / "2026111[45]-*" / "cycle_*_inspect.jpg"))):
         run, ci = Path(f).parent.name, int(Path(f).name.split("_")[1])
-        label = "defect" if (run, ci) in LIVE_DEFECT else truth.get((run, ci), "clean")
+        extra = {(a.split(":")[0], int(a.split(":")[1])) for a in args.defect}
+        label = "defect" if (run, ci) in LIVE_DEFECT | extra else truth.get((run, ci), "clean")
         full = f.replace("_inspect.jpg", "_frame.jpg")
         if os.path.exists(full):
             s, per = clf.score(cv2.imread(full))
@@ -530,6 +538,7 @@ def main() -> None:
     p.add_argument("--device", default="GPU", help="OpenVINO device of the backbone (or torch)")
     p.add_argument("--name", required=True)
     p.add_argument("--threshold", type=float, default=None)
+    p.add_argument("--defect", nargs="*", default=[], help="more defect cycles RUN:CYCLE (e.g. labelled by eye)")
     p = sub.add_parser("export")
     p.add_argument("--name", required=True)
     p.add_argument("--devices", nargs="+", default=["GPU", "NPU", "CPU"])

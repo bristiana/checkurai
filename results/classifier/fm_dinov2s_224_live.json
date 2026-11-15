@@ -1,18 +1,18 @@
 {
  "name": "fm_dinov2s_224",
- "threshold": 0.25,
- "clean_called_good": "9/14",
- "defects_caught": "2/2",
+ "threshold": 0.5,
+ "clean_called_good": "12/15",
+ "defects_caught": "3/3",
  "rows": [
   {
    "run": "20261114-195345",
    "cycle": 0,
    "label": "clean",
-   "score": 0.0691,
+   "score": 0.0711,
    "how": "montage",
    "verdict": "good",
    "views": {
-    "direct": 0.069,
+    "direct": 0.071,
     "left": 0.002,
     "right": 0.0
    }
@@ -21,11 +21,11 @@
    "run": "20261114-195521",
    "cycle": 0,
    "label": "clean",
-   "score": 0.2748,
+   "score": 0.2827,
    "how": "montage",
-   "verdict": "defect",
+   "verdict": "good",
    "views": {
-    "direct": 0.275,
+    "direct": 0.283,
     "left": 0.001,
     "right": 0.029
    }
@@ -47,24 +47,24 @@
    "run": "20261114-195725",
    "cycle": 0,
    "label": "clean",
-   "score": 0.3851,
+   "score": 0.3792,
    "how": "montage",
-   "verdict": "defect",
+   "verdict": "good",
    "views": {
     "direct": 0.021,
     "left": 0.001,
-    "right": 0.385
+    "right": 0.379
    }
   },
   {
    "run": "20261114-195725",
    "cycle": 1,
    "label": "clean",
-   "score": 0.9825,
+   "score": 0.9826,
    "how": "montage",
    "verdict": "defect",
    "views": {
-    "direct": 0.982,
+    "direct": 0.983,
     "left": 0.0,
     "right": 0.0
    }
@@ -86,11 +86,11 @@
    "run": "20261114-200200",
    "cycle": 1,
    "label": "clean",
-   "score": 0.1754,
+   "score": 0.1763,
    "how": "montage",
    "verdict": "good",
    "views": {
-    "direct": 0.175,
+    "direct": 0.176,
     "left": 0.004,
     "right": 0.0
    }
@@ -112,11 +112,11 @@
    "run": "20261114-200539",
    "cycle": 0,
    "label": "clean",
-   "score": 0.0855,
+   "score": 0.0898,
    "how": "montage",
    "verdict": "good",
    "views": {
-    "direct": 0.086,
+    "direct": 0.09,
     "left": 0.001,
     "right": 0.0
    }
@@ -125,11 +125,11 @@
    "run": "20261114-202403",
    "cycle": 0,
    "label": "clean",
-   "score": 0.0104,
+   "score": 0.0105,
    "how": "montage",
    "verdict": "good",
    "views": {
-    "direct": 0.01,
+    "direct": 0.011,
     "left": 0.002,
     "right": 0.002
    }
@@ -138,12 +138,12 @@
    "run": "20261114-202403",
    "cycle": 1,
    "label": "clean",
-   "score": 0.899,
+   "score": 0.8998,
    "how": "montage",
    "verdict": "defect",
    "views": {
-    "direct": 0.8,
-    "left": 0.899,
+    "direct": 0.803,
+    "left": 0.9,
     "right": 0.002
    }
   },
@@ -151,13 +151,13 @@
    "run": "20261114-202403",
    "cycle": 2,
    "label": "clean",
-   "score": 0.0442,
+   "score": 0.0423,
    "how": "montage",
    "verdict": "good",
    "views": {
     "direct": 0.0,
     "left": 0.0,
-    "right": 0.044
+    "right": 0.042
    }
   },
   {
@@ -182,8 +182,8 @@
    "verdict": "defect",
    "views": {
     "direct": 0.998,
-    "left": 0.156,
-    "right": 0.226
+    "left": 0.158,
+    "right": 0.234
    }
   },
   {
@@ -210,6 +210,32 @@
     "direct": 0.0,
     "left": 0.001,
     "right": 0.0
+   }
+  },
+  {
+   "run": "20261114-214312",
+   "cycle": 0,
+   "label": "clean",
+   "score": 0.0008,
+   "how": "frame",
+   "verdict": "good",
+   "views": {
+    "direct": 0.0,
+    "left": 0.001,
+    "right": 0.0
+   }
+  },
+  {
+   "run": "20261114-214717",
+   "cycle": 0,
+   "label": "defect",
+   "score": 0.9999,
+   "how": "frame",
+   "verdict": "defect",
+   "views": {
+    "direct": 1.0,
+    "left": 0.616,
+    "right": 0.994
    }
   }
  ]

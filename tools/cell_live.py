@@ -483,6 +483,8 @@ def install() -> None:
         if res.verdict != "empty" and calls:
             best = min(calls, key=lambda c: abs(c["combined"] - (res.score or 0)))
             norm = getattr(self.scorer, "norm", None) or {}
+            if not norm and hasattr(self, "_live_orig_inspect"):  # classifier: P(defect) per view is the scale
+                norm = {n: [0.0, 1.0] for n in best["views"]}
             for n, v in best["views"].items():
                 raw = float(best["per"][n])
                 if norm.get(n):  # the decision's scale: (raw - median good) / (max good - median good)
@@ -539,7 +541,7 @@ def install() -> None:
                 import cv2
                 xs = {n: {"x": (cv2.cvtColor(cv2.resize(c, (self.size, self.size), interpolation=cv2.INTER_AREA),
                                             cv2.COLOR_BGR2RGB).astype(np.float32) / 255).transpose(2, 0, 1)[None],
-                          "amap": None} for n, c in crops.items()}
+                          "amap": self.cam(c)} for n, c in crops.items()}  # where it sees the defect (CAM)
                 calls.append({"combined": float(s), "per": dict(self.last_views), "ms": float(ms), "views": xs})
                 del calls[:-12]
             L.guard("cls_capture", _cap)

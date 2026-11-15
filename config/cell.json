@@ -14,7 +14,7 @@
   "grace_s": 3.0,
   "stage_timeout": 45,
   "start_timeout": 10,
-  "anomaly_model": "resnet18_synth_v1",
+  "anomaly_model": "resnet18_synth2_v2only",
   "anomaly_device": "GPU",
   "frames": 5,
   "hold_score": 2.5

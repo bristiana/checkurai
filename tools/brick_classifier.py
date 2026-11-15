@@ -103,9 +103,10 @@ class BrickClassifierInspector:
 
     def cam(self, crop: np.ndarray) -> np.ndarray:
         """Where the classifier sees the defect: class activation map of one view crop, HxW float in [0, 1] at the
-        crop's size (sigmoid of the per-cell logit, 7x7 cells upsampled; the cells' mean logit is the model's
-        logit). OpenVINO cam.xml (written by `export`) on the inspector's device, a few ms per crop; torch on the
-        CPU if cam.xml is missing; zeros for non-resnet models."""
+        crop's size. The 7x7 per-cell logits (their mean is exactly the model's logit) are min-max normalised and
+        scaled by the crop's P(defect), so the peak marks the most defect-like cell and a clean crop stays near 0.
+        OpenVINO cam.xml (written by `export`) on the inspector's device (~25 ms for 3 views on 4 CPU cores, one
+        extra resnet18 pass on the GPU); torch on the CPU if cam.xml is missing; zeros if neither works."""
         if not hasattr(self, "_cam"):
             self._cam = None
             try:
@@ -132,7 +133,9 @@ class BrickClassifierInspector:
 
             with torch.no_grad():
                 c = self._cam[1](torch.from_numpy(x)).numpy()
-        c = 1 / (1 + np.exp(-c.reshape(c.shape[-2:])))
+        c = c.reshape(c.shape[-2:]).astype(np.float64)
+        p = 1 / (1 + np.exp(-c.mean()))  # = the crop's P(defect)
+        c = p * (c - c.min()) / (c.max() - c.min() + 1e-6)  # where, scaled by how sure (a clean crop stays dark)
         return cv2.resize(c.astype(np.float32), (crop.shape[1], crop.shape[0]), interpolation=cv2.INTER_CUBIC).clip(0, 1)
 
     def spot(self, frames: list[np.ndarray]) -> tuple[bool, float]:
