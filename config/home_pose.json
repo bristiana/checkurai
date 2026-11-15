@@ -8,12 +8,12 @@
   "gripper"
  ],
  "home": [
-  2.852,
-  -99.056,
-  18.343,
-  97.726,
-  0.0,
-  4.414
+  -13.718,
+  -98.719,
+  19.363,
+  96.886,
+  -47.84,
+  3.952
  ],
  "tolerance": [
   6.0,
@@ -37,7 +37,15 @@
    3.676
   ],
   "learned_at": "2026-11-13T17:01:49",
-  "note": "Sat 14 Nov: wrist_roll joint ranges changed (follower ticks 0-2048, leader 1024-3072) so the follower wrist sits 90 deg turned when the leader wrist is straight; roll 0 = that pose, +-100 = +-90 deg. Old datasets used the full-turn range; re-learn HOME from the new demos",
-  "changed_at": "2026-11-13T18:41:40"
- }
+  "note": "Final calibration 1114-042115: HOME converted to the new calibration, same physical pose. wrist_roll ranges: follower 0-2048, leader 1024-3072 (follower turned 90 deg vs leader); roll 0 = HOME. Shared leader/follower range on shoulder_pan (1114-042616). Wrist roll re-ranged 1114-043142: follower (1251, 3867), leader (227, 2843). Wrist roll re-ranged 1114-043815: follower (2047, 3981), leader (113, 2047). Wrist roll re-ranged 1114-043953: follower (1251, 3867), leader (1364, 3981).",
+  "changed_at": "2026-11-14T04:24:25"
+ },
+ "previous_home": [
+  2.852,
+  -99.056,
+  18.343,
+  97.726,
+  0.0,
+  4.414
+ ]
 }

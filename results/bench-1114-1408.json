@@ -1,0 +1,713 @@
+{
+ "stamp": "1114-1408",
+ "started": "2026-11-14T14:44:19",
+ "system": {
+  "openvino": "2026.3.0-22451-8a17657b995-releases/2026/3",
+  "python": "3.11.18",
+  "kernel": "7.0.0-38-generic",
+  "devices": {
+   "NPU": "Intel(R) AI Boost",
+   "GPU": "Intel(R) Arc(TM) B390 GPU (iGPU)",
+   "CPU": "Intel(R) Core(TM) Ultra X9 388H"
+  },
+  "npu_driver": 1789049548
+ },
+ "cell": {
+  "pick_model": "act-pick-v3",
+  "place_good_model": "act-place-good-v3",
+  "place_bad_model": "act-place-bad-v3",
+  "anomaly_model": "patchcore_views_384",
+  "device": "GPU",
+  "anomaly_device": "GPU",
+  "frames": 5,
+  "hz": 30,
+  "execution": "async",
+  "request_threshold": 0.5
+ },
+ "power_csv": "power-1114-1353.csv",
+ "models": [
+  {
+   "label": "ACT act-pick-v3",
+   "role": "policy",
+   "xml": "~/.local/share/physicalai/models/1fc8e2ee-c1c8-45f1-bdc4-897d87a6ea4e/exports/openvino/act.xml",
+   "bin_mb": 138.1,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "state": "[1,6]",
+    "images.wrist": "[1,3,384,384]",
+    "images.top": "[1,3,384,384]"
+   },
+   "outputs": {
+    "action": "[1,100,6]"
+   },
+   "ops": 2135,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "183% ffmpeg",
+      "139% rerun",
+      "129% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "112% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 3.08,
+     "precision": "f16",
+     "execution_devices": "NPU",
+     "threads": null,
+     "first_ms": 49.27,
+     "n": 1008,
+     "median_ms": 9.94,
+     "mean_ms": 9.93,
+     "p95_ms": 10.74,
+     "p99_ms": 11.63,
+     "min_ms": 8.48,
+     "max_ms": 13.18,
+     "window": [
+      1794696280.195227,
+      1794696290.4656951
+     ],
+     "throughput_fps": 125.0,
+     "throughput_nreq": 8,
+     "busy_at_end": [
+      "139% rerun",
+      "112% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "103% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 9.96,
+      "samples": 21,
+      "pkg_J": 268.32,
+      "pkg_W_mean": 26.93,
+      "pkg_W_peak": 28.48,
+      "core_J": 73.29,
+      "core_W_mean": 7.36,
+      "core_W_peak": 8.88,
+      "uncore_J": 88.37,
+      "uncore_W_mean": 8.87,
+      "uncore_W_peak": 10.37,
+      "dram_J": 16.81,
+      "dram_W_mean": 1.69,
+      "dram_W_peak": 1.75,
+      "psys_J": 431.49,
+      "psys_W_mean": 43.31,
+      "psys_W_peak": 46.01,
+      "pkg_C_max": 66.0,
+      "hot_C_max": 68.0,
+      "cpu_pct_mean": 35.7,
+      "gpu_mhz_mean": 1750.0,
+      "npu_pct_mean": 91.2,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 34.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 266.2,
+     "pkg_mJ_per_inference_above_idle": -20.7
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "139% rerun",
+      "112% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "103% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 6.51,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 8.58,
+     "n": 939,
+     "median_ms": 9.82,
+     "mean_ms": 10.66,
+     "p95_ms": 17.75,
+     "p99_ms": 20.49,
+     "min_ms": 5.95,
+     "max_ms": 23.8,
+     "window": [
+      1794696310.1455748,
+      1794696320.378803
+     ],
+     "throughput_fps": 93.3,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "139% rerun",
+      "116% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "101% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 9.96,
+      "samples": 21,
+      "pkg_J": 270.01,
+      "pkg_W_mean": 27.11,
+      "pkg_W_peak": 27.14,
+      "core_J": 91.54,
+      "core_W_mean": 9.19,
+      "core_W_peak": 9.83,
+      "uncore_J": 111.61,
+      "uncore_W_mean": 11.21,
+      "uncore_W_peak": 11.55,
+      "dram_J": 16.65,
+      "dram_W_mean": 1.67,
+      "dram_W_peak": 1.71,
+      "psys_J": 435.9,
+      "psys_W_mean": 43.76,
+      "psys_W_peak": 43.98,
+      "pkg_C_max": 67.0,
+      "hot_C_max": 67.0,
+      "cpu_pct_mean": 37.4,
+      "gpu_mhz_mean": 2000.0,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 33.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 287.6,
+     "pkg_mJ_per_inference_above_idle": -20.4
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "139% rerun",
+      "116% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "101% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 0.98,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 218.57,
+     "n": 100,
+     "median_ms": 181.2,
+     "mean_ms": 199.82,
+     "p95_ms": 286.06,
+     "p99_ms": 369.74,
+     "min_ms": 155.5,
+     "max_ms": 373.24,
+     "window": [
+      1794696336.9084065,
+      1794696357.331464
+     ],
+     "throughput_fps": 10.7,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "139% rerun",
+      "115% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 19.95,
+      "samples": 41,
+      "pkg_J": 538.73,
+      "pkg_W_mean": 27.01,
+      "pkg_W_peak": 27.84,
+      "core_J": 228.63,
+      "core_W_mean": 11.46,
+      "core_W_peak": 11.76,
+      "uncore_J": 185.68,
+      "uncore_W_mean": 9.31,
+      "uncore_W_peak": 10.08,
+      "dram_J": 29.85,
+      "dram_W_mean": 1.5,
+      "dram_W_peak": 1.58,
+      "psys_J": 858.61,
+      "psys_W_mean": 43.04,
+      "psys_W_peak": 43.92,
+      "pkg_C_max": 68.0,
+      "hot_C_max": 68.0,
+      "cpu_pct_mean": 51.3,
+      "gpu_mhz_mean": 1747.6,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 32.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 5387.3,
+     "pkg_mJ_per_inference_above_idle": -404.2
+    }
+   ]
+  },
+  {
+   "label": "patchcore_views_384",
+   "role": "anomaly",
+   "xml": "~/checkurai/models/anomaly/patchcore_views_384/weights/openvino/model.xml",
+   "bin_mb": 358.6,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "input": "[1,3,384,384]"
+   },
+   "outputs": {
+    "pred_score": "[1]",
+    "anomaly_map": "[1,1,384,384]"
+   },
+   "ops": 451,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "139% rerun",
+      "115% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "error": "compile failed: Exception from src/inference/src/cpp/core.cpp:117:"
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "139% rerun",
+      "114% policy_tune.py act-place-good-v4 act-place-bad-v4",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 3.93,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 8708.2,
+     "n": 5,
+     "median_ms": 6917.51,
+     "mean_ms": 6937.75,
+     "p95_ms": 7040.22,
+     "p99_ms": 7040.22,
+     "min_ms": 6790.52,
+     "max_ms": 7040.22,
+     "window": [
+      1794696396.1604593,
+      1794696430.9274435
+     ],
+     "throughput_fps": 0.1,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 34.5,
+      "samples": 70,
+      "pkg_J": 930.4,
+      "pkg_W_mean": 26.97,
+      "pkg_W_peak": 27.79,
+      "core_J": 337.69,
+      "core_W_mean": 9.79,
+      "core_W_peak": 10.54,
+      "uncore_J": 388.68,
+      "uncore_W_mean": 11.27,
+      "uncore_W_peak": 11.94,
+      "dram_J": 48.13,
+      "dram_W_mean": 1.4,
+      "dram_W_peak": 1.46,
+      "psys_J": 1487.81,
+      "psys_W_mean": 43.13,
+      "psys_W_peak": 44.09,
+      "pkg_C_max": 71.0,
+      "hot_C_max": 71.0,
+      "cpu_pct_mean": 28.2,
+      "gpu_mhz_mean": 2353.6,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 29.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 186080.0,
+     "pkg_mJ_per_inference_above_idle": -14227.0
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 3.32,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 1933.78,
+     "n": 18,
+     "median_ms": 1738.52,
+     "mean_ms": 1759.43,
+     "p95_ms": 1863.63,
+     "p99_ms": 1992.32,
+     "min_ms": 1693.73,
+     "max_ms": 1992.32,
+     "window": [
+      1794696518.1885436,
+      1794696550.2589226
+     ],
+     "throughput_fps": 1.1,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "138% rerun",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 31.5,
+      "samples": 64,
+      "pkg_J": 848.59,
+      "pkg_W_mean": 26.94,
+      "pkg_W_peak": 28.2,
+      "core_J": 361.13,
+      "core_W_mean": 11.46,
+      "core_W_peak": 12.42,
+      "uncore_J": 285.38,
+      "uncore_W_mean": 9.06,
+      "uncore_W_peak": 10.03,
+      "dram_J": 48.46,
+      "dram_W_mean": 1.54,
+      "dram_W_peak": 1.68,
+      "psys_J": 1373.91,
+      "psys_W_mean": 43.61,
+      "psys_W_peak": 45.22,
+      "pkg_C_max": 68.0,
+      "hot_C_max": 68.0,
+      "cpu_pct_mean": 50.9,
+      "gpu_mhz_mean": 1730.5,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 32.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 47143.9,
+     "pkg_mJ_per_inference_above_idle": -3658.6
+    }
+   ]
+  },
+  {
+   "label": "efficientad_256",
+   "role": "anomaly",
+   "xml": "~/checkurai/models/anomaly/efficientad_256/weights/openvino/model.xml",
+   "bin_mb": 32.2,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "input": "[1,3,256,256]"
+   },
+   "outputs": {
+    "pred_score": "[1,1]",
+    "anomaly_map": "[1,1,256,256]"
+   },
+   "ops": 254,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "138% rerun",
+      "100% ps",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 2.38,
+     "precision": "f16",
+     "execution_devices": "NPU",
+     "threads": null,
+     "first_ms": 56.92,
+     "n": 818,
+     "median_ms": 12.18,
+     "mean_ms": 12.23,
+     "p95_ms": 12.83,
+     "p99_ms": 14.24,
+     "min_ms": 11.57,
+     "max_ms": 15.35,
+     "window": [
+      1794696573.6411474,
+      1794696583.8839536
+     ],
+     "throughput_fps": 89.3,
+     "throughput_nreq": 8,
+     "busy_at_end": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 10.0,
+      "samples": 21,
+      "pkg_J": 269.8,
+      "pkg_W_mean": 26.98,
+      "pkg_W_peak": 27.69,
+      "core_J": 57.14,
+      "core_W_mean": 5.71,
+      "core_W_peak": 5.96,
+      "uncore_J": 92.51,
+      "uncore_W_mean": 9.25,
+      "uncore_W_peak": 10.03,
+      "dram_J": 15.28,
+      "dram_W_mean": 1.53,
+      "dram_W_peak": 1.6,
+      "psys_J": 437.65,
+      "psys_W_mean": 43.76,
+      "psys_W_peak": 44.82,
+      "pkg_C_max": 65.0,
+      "hot_C_max": 67.0,
+      "cpu_pct_mean": 27.8,
+      "gpu_mhz_mean": 1738.1,
+      "npu_pct_mean": 94.6,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 35.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 329.8,
+     "pkg_mJ_per_inference_above_idle": -25.1
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 0.38,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 16.58,
+     "n": 812,
+     "median_ms": 11.81,
+     "mean_ms": 12.33,
+     "p95_ms": 19.41,
+     "p99_ms": 22.43,
+     "min_ms": 7.2,
+     "max_ms": 25.03,
+     "window": [
+      1794696596.4181967,
+      1794696606.6197348
+     ],
+     "throughput_fps": 79.2,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 9.45,
+      "samples": 20,
+      "pkg_J": 256.9,
+      "pkg_W_mean": 27.18,
+      "pkg_W_peak": 27.27,
+      "core_J": 71.32,
+      "core_W_mean": 7.54,
+      "core_W_peak": 8.13,
+      "uncore_J": 124.71,
+      "uncore_W_mean": 13.19,
+      "uncore_W_peak": 13.49,
+      "dram_J": 14.24,
+      "dram_W_mean": 1.51,
+      "dram_W_peak": 1.52,
+      "psys_J": 421.01,
+      "psys_W_mean": 44.54,
+      "psys_W_peak": 44.87,
+      "pkg_C_max": 66.0,
+      "hot_C_max": 66.0,
+      "cpu_pct_mean": 32.1,
+      "gpu_mhz_mean": 2017.5,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 34.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 316.4,
+     "pkg_mJ_per_inference_above_idle": -21.5
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "138% rerun",
+      "100% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "heavy_jobs": [
+      "anomaly_train.py eval-views --name"
+     ],
+     "compile_s": 0.08,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 296.8,
+     "n": 92,
+     "median_ms": 327.6,
+     "mean_ms": 329.18,
+     "p95_ms": 350.77,
+     "p99_ms": 359.07,
+     "min_ms": 306.62,
+     "max_ms": 360.49,
+     "window": [
+      1794696622.4294903,
+      1794696653.3488336
+     ],
+     "throughput_fps": 6.3,
+     "throughput_nreq": 10,
+     "busy_at_end": [
+      "138% rerun",
+      "99% anomaly_train.py eval-views --name",
+      "51% firefox"
+     ],
+     "power": {
+      "seconds": 30.5,
+      "samples": 62,
+      "pkg_J": 821.68,
+      "pkg_W_mean": 26.94,
+      "pkg_W_peak": 27.84,
+      "core_J": 361.22,
+      "core_W_mean": 11.84,
+      "core_W_peak": 12.46,
+      "uncore_J": 264.8,
+      "uncore_W_mean": 8.68,
+      "uncore_W_peak": 9.49,
+      "dram_J": 45.32,
+      "dram_W_mean": 1.49,
+      "dram_W_peak": 1.59,
+      "psys_J": 1326.44,
+      "psys_W_mean": 43.49,
+      "psys_W_peak": 45.33,
+      "pkg_C_max": 68.0,
+      "hot_C_max": 68.0,
+      "cpu_pct_mean": 52.7,
+      "gpu_mhz_mean": 1682.3,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 32.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 100.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 8931.3,
+     "pkg_mJ_per_inference_above_idle": -692.8
+    }
+   ]
+  }
+ ],
+ "idle_busy": [
+  "139% rerun",
+  "51% firefox"
+ ],
+ "act_same_graph": [
+  {
+   "model": "act-place-good-v3",
+   "same_graph_as_pick": true
+  },
+  {
+   "model": "act-place-bad-v3",
+   "same_graph_as_pick": true
+  }
+ ],
+ "idle": {
+  "seconds": 14.49,
+  "samples": 30,
+  "pkg_J": 420.8,
+  "pkg_W_mean": 29.03,
+  "pkg_W_peak": 45.05,
+  "core_J": 172.26,
+  "core_W_mean": 11.89,
+  "core_W_peak": 23.79,
+  "uncore_J": 162.63,
+  "uncore_W_mean": 11.22,
+  "uncore_W_peak": 19.81,
+  "dram_J": 20.34,
+  "dram_W_mean": 1.4,
+  "dram_W_peak": 1.58,
+  "psys_J": 661.72,
+  "psys_W_mean": 45.66,
+  "psys_W_peak": 63.54,
+  "pkg_C_max": 78.0,
+  "hot_C_max": 78.0,
+  "cpu_pct_mean": 28.0,
+  "gpu_mhz_mean": 2271.7,
+  "npu_pct_mean": 0.0,
+  "bat_W_mean": 0.0,
+  "headroom_C_min": 22.0,
+  "cpu_throttle_events": 0,
+  "gpu_throttle_reasons": [
+   "pl1"
+  ],
+  "gpu_throttle_pct": 50.0,
+  "on_mains": true
+ },
+ "finished": "2026-11-14T14:51:07"
+}

@@ -1,0 +1,118 @@
+{
+ "inspection": {
+  "controls": {
+   "power_line_frequency": 1,
+   "gain": 0,
+   "exposure_time_absolute": 246,
+   "auto_exposure": 1,
+   "white_balance_temperature": 4650,
+   "white_balance_automatic": 0,
+   "focus_absolute": 290,
+   "focus_automatic_continuous": 0
+  },
+  "original": {
+   "auto_exposure": 1,
+   "exposure_time_absolute": 285,
+   "exposure_dynamic_framerate": null,
+   "white_balance_automatic": 0,
+   "white_balance_temperature": 4650,
+   "focus_automatic_continuous": 0,
+   "focus_absolute": 320,
+   "gain": 0,
+   "power_line_frequency": 1
+  },
+  "auto_picture": {
+   "mean": 147.3019256591797,
+   "clip": 0.4599609375,
+   "rg": 1.0107568366527468,
+   "bg": 1.0218331846575721,
+   "sharp": 162.2170867919922,
+   "motion": 0.9803711175918579
+  },
+  "locked_picture": {
+   "mean": 144.71649169921875,
+   "clip": 0.49902343750000006,
+   "rg": 1.0168493789787045,
+   "bg": 1.0192957707475008,
+   "sharp": 172.8596954345703,
+   "motion": 1.2451667785644531
+  },
+  "device_name": "Webcam Audio: Webcam",
+  "when": "2026-11-14 07:52:17"
+ },
+ "top": {
+  "controls": {
+   "power_line_frequency": 1,
+   "gain": 64,
+   "exposure_time_absolute": 101,
+   "auto_exposure": 1,
+   "exposure_dynamic_framerate": 0,
+   "white_balance_temperature": 5700,
+   "white_balance_automatic": 0
+  },
+  "original": {
+   "auto_exposure": 1,
+   "exposure_time_absolute": 229,
+   "exposure_dynamic_framerate": 0,
+   "white_balance_automatic": 0,
+   "white_balance_temperature": 5700,
+   "gain": 64,
+   "power_line_frequency": 1
+  },
+  "auto_picture": {
+   "mean": 121.83509063720703,
+   "clip": 0.10026041666666666,
+   "rg": 0.985427365739705,
+   "bg": 1.0077571258916656,
+   "sharp": 154.2889862060547,
+   "motion": 1.370568871498108
+  },
+  "locked_picture": {
+   "mean": 121.6871337890625,
+   "clip": 0.09602864583333333,
+   "rg": 1.0330607559458465,
+   "bg": 1.033179215828907,
+   "sharp": 180.37734985351562,
+   "motion": 5.096940040588379
+  },
+  "device_name": "Intel(R) RealSense(TM) Depth Ca",
+  "when": "2026-11-14 07:51:27"
+ },
+ "wrist": {
+  "controls": {
+   "power_line_frequency": 1,
+   "gain": 0,
+   "exposure_time_absolute": 96,
+   "auto_exposure": 1,
+   "exposure_dynamic_framerate": 0,
+   "white_balance_automatic": 1
+  },
+  "original": {
+   "auto_exposure": 1,
+   "exposure_time_absolute": 78,
+   "exposure_dynamic_framerate": 0,
+   "white_balance_automatic": 1,
+   "white_balance_temperature": 3696,
+   "gain": 0,
+   "power_line_frequency": 1
+  },
+  "auto_picture": {
+   "mean": 138.70758056640625,
+   "clip": 4.815104166666666,
+   "rg": 0.9597209408541494,
+   "bg": 1.0508602546074135,
+   "sharp": 233.33534240722656,
+   "motion": 1.173058271408081
+  },
+  "locked_picture": {
+   "mean": 137.5774383544922,
+   "clip": 4.213541666666667,
+   "rg": 0.9479858509014344,
+   "bg": 1.0333211810381697,
+   "sharp": 222.6668243408203,
+   "motion": 1.165269374847412
+  },
+  "device_name": "USB2.0_CAM1: USB2.0_CAM1",
+  "when": "2026-11-14 07:52:33"
+ }
+}

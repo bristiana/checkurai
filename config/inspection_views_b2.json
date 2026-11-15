@@ -1,0 +1,27 @@
+{
+ "frame": [
+  1920,
+  1080
+ ],
+ "views": {
+  "direct": [
+   576,
+   512,
+   1372,
+   1080
+  ],
+  "left": [
+   200,
+   0,
+   988,
+   396
+  ],
+  "right": [
+   1038,
+   0,
+   1574,
+   408
+  ]
+ },
+ "made_from": "union of the brick boxes per view + 40px"
+}
