@@ -1,0 +1,124 @@
+{
+ "stamp": "1114-2014",
+ "started": "2026-11-14T20:14:42",
+ "system": {
+  "openvino": "2026.4.1-22982-e213a147257-releases/2026/4",
+  "python": "3.13.18",
+  "kernel": "7.0.0-38-generic",
+  "devices": {
+   "GPU": "Intel(R) Arc(TM) B390 GPU (iGPU)"
+  },
+  "npu_driver": null
+ },
+ "cell": {
+  "pick_model": "act-pick-v6-h100",
+  "place_good_model": "act-place-good-v5",
+  "place_bad_model": "act-place-bad-v6",
+  "anomaly_model": "patchcore_views_b2g_384_mask",
+  "device": "GPU",
+  "anomaly_device": "GPU",
+  "frames": 5,
+  "hz": 30,
+  "execution": "async",
+  "request_threshold": 0.5
+ },
+ "power_csv": "power-1114-1353.csv",
+ "models": [
+  {
+   "label": "SmolVLA smolvla-place-both-v5",
+   "role": "policy",
+   "xml": "~/.local/share/physicalai/models/f4f1c732-1853-4a62-81c7-79e2f5dc2116/exports/openvino/smolvla.xml",
+   "bin_mb": 795.7,
+   "weights": {
+    "bf16": 98.1,
+    "f32": 1.9
+   },
+   "inputs": {
+    "state": "[1,6]",
+    "noise": "[1,50,32]",
+    "tokenized_prompt": "[1,48]",
+    "tokenized_prompt_mask": "[1,48]",
+    "images": "[2,1,3,512,512]",
+    "image_masks": "[2,1]"
+   },
+   "outputs": {
+    "action": "[1,50,6]"
+   },
+   "ops": 37446,
+   "runs": [
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 13.64,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 93.43,
+     "n": 77,
+     "median_ms": 78.65,
+     "mean_ms": 78.68,
+     "p95_ms": 81.07,
+     "p99_ms": 82.11,
+     "min_ms": 75.71,
+     "max_ms": 83.05,
+     "window": [
+      1794716104.2120416,
+      1794716110.3757162
+     ],
+     "throughput_fps": 10.9,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794716083.3432522,
+      1794716088.3433962
+     ],
+     "power": {
+      "seconds": 6.0,
+      "samples": 13,
+      "pkg_J": 238.08,
+      "pkg_W_mean": 39.65,
+      "pkg_W_peak": 41.93,
+      "core_J": 66.02,
+      "core_W_mean": 11.0,
+      "core_W_peak": 12.97,
+      "uncore_J": 128.44,
+      "uncore_W_mean": 21.39,
+      "uncore_W_peak": 22.11,
+      "dram_J": 11.78,
+      "dram_W_mean": 1.96,
+      "dram_W_peak": 2.01,
+      "psys_J": 339.37,
+      "psys_W_mean": 56.52,
+      "psys_W_peak": 58.99,
+      "pkg_C_max": 73.0,
+      "hot_C_max": 75.0,
+      "cpu_pct_mean": 16.1,
+      "gpu_mhz_mean": 2488.5,
+      "npu_pct_mean": 0.0,
+      "headroom_C_min": 27.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl2"
+      ],
+      "gpu_throttle_pct": 7.7,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 3091.9,
+     "idle_pkg_W": 16.62,
+     "pkg_mJ_per_inference_above_idle": 1796.88
+    }
+   ]
+  }
+ ],
+ "idle": null,
+ "finished": "2026-11-14T20:15:32"
+}

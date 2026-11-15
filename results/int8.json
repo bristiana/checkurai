@@ -1,0 +1,597 @@
+{
+ "tools": {
+  "build": "nncf 3.4.0 compress_weights, openvino 2026.3",
+  "eval": "physicalai InferenceModel, openvino 2026.4.1"
+ },
+ "drift_definition": "abs(INT8 action - FP action), degrees, first 10 chunk steps, real training-dataset frames, CPU",
+ "compress": [
+  {
+   "model": "act-pick-v6-h100",
+   "variant": "deployed (policy_tune'd)",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/068a27f3-f229-4f83-a3b7-9b0a3afd604f/exports/openvino/act.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-pick-v6-h100/int8/act.xml",
+   "fp_bin_mb": 138.1,
+   "q_bin_mb": 35.8,
+   "seconds": 1.6
+  },
+  {
+   "model": "act-pick-v6-h100",
+   "variant": "-orig",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/068a27f3-f229-4f83-a3b7-9b0a3afd604f/exports/openvino/act.orig.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-pick-v6-h100-orig/int8/act.xml",
+   "fp_bin_mb": 136.9,
+   "q_bin_mb": 34.6,
+   "seconds": 1.8
+  },
+  {
+   "model": "act-place-good-v5",
+   "variant": "deployed (policy_tune'd)",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/e735299f-1d0b-446d-b99e-02c3663a78db/exports/openvino/act.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-place-good-v5/int8/act.xml",
+   "fp_bin_mb": 138.1,
+   "q_bin_mb": 35.8,
+   "seconds": 1.6
+  },
+  {
+   "model": "act-place-good-v5",
+   "variant": "-orig",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/e735299f-1d0b-446d-b99e-02c3663a78db/exports/openvino/act.orig.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-place-good-v5-orig/int8/act.xml",
+   "fp_bin_mb": 136.9,
+   "q_bin_mb": 34.6,
+   "seconds": 1.6
+  },
+  {
+   "model": "act-place-bad-v6",
+   "variant": "deployed (policy_tune'd)",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/4b13783b-956a-4347-a6e8-b0f5d01eeb8c/exports/openvino/act.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-place-bad-v6/int8/act.xml",
+   "fp_bin_mb": 138.1,
+   "q_bin_mb": 35.8,
+   "seconds": 1.7
+  },
+  {
+   "model": "act-place-bad-v6",
+   "variant": "-orig",
+   "mode": "int8",
+   "src": "/home/intel/.local/share/physicalai/models/4b13783b-956a-4347-a6e8-b0f5d01eeb8c/exports/openvino/act.orig.xml",
+   "dst": "/home/intel/checkurai/results/int8/act-place-bad-v6-orig/int8/act.xml",
+   "fp_bin_mb": 136.9,
+   "q_bin_mb": 34.6,
+   "seconds": 1.7
+  }
+ ],
+ "full_int8_drift_100_frames": {
+  "act-pick-v6-h100": {
+   "int8_vs_fp_CPU": {
+    "mean": {
+     "shoulder_pan": 13.282999992370605,
+     "shoulder_lift": 35.255001068115234,
+     "elbow_flex": 27.062999725341797,
+     "wrist_flex": 7.25,
+     "wrist_roll": 13.020999908447266,
+     "gripper": 8.91100025177002
+    },
+    "max": {
+     "shoulder_pan": 52.58300018310547,
+     "shoulder_lift": 152.5570068359375,
+     "elbow_flex": 104.54900360107422,
+     "wrist_flex": 48.060001373291016,
+     "wrist_roll": 61.65399932861328,
+     "gripper": 44.98500061035156
+    },
+    "p99": {
+     "shoulder_pan": 50.55699920654297,
+     "shoulder_lift": 136.26800537109375,
+     "elbow_flex": 92.80999755859375,
+     "wrist_flex": 38.27899932861328,
+     "wrist_roll": 61.29899978637695,
+     "gripper": 34.97100067138672
+    }
+   },
+   "fp_vs_demo_first_step_CPU": {
+    "shoulder_pan": 1.4800000190734863,
+    "shoulder_lift": 2.950000047683716,
+    "elbow_flex": 2.3299999237060547,
+    "wrist_flex": 0.8999999761581421,
+    "wrist_roll": 1.7100000381469727,
+    "gripper": 3.4200000762939453
+   }
+  },
+  "act-place-good-v5": {
+   "int8_vs_fp_CPU": {
+    "mean": {
+     "shoulder_pan": 18.003000259399414,
+     "shoulder_lift": 37.638999938964844,
+     "elbow_flex": 27.17300033569336,
+     "wrist_flex": 9.321999549865723,
+     "wrist_roll": 9.574999809265137,
+     "gripper": 6.6539998054504395
+    },
+    "max": {
+     "shoulder_pan": 77.71700286865234,
+     "shoulder_lift": 133.43699645996094,
+     "elbow_flex": 109.98200225830078,
+     "wrist_flex": 50.38600158691406,
+     "wrist_roll": 44.28499984741211,
+     "gripper": 37.04399871826172
+    },
+    "p99": {
+     "shoulder_pan": 73.74700164794922,
+     "shoulder_lift": 127.34100341796875,
+     "elbow_flex": 100.61100006103516,
+     "wrist_flex": 46.10900115966797,
+     "wrist_roll": 42.74700164794922,
+     "gripper": 30.329999923706055
+    }
+   },
+   "fp_vs_demo_first_step_CPU": {
+    "shoulder_pan": 1.5299999713897705,
+    "shoulder_lift": 3.0299999713897705,
+    "elbow_flex": 2.4000000953674316,
+    "wrist_flex": 1.4900000095367432,
+    "wrist_roll": 1.6799999475479126,
+    "gripper": 2.7899999618530273
+   }
+  },
+  "act-place-bad-v6": {
+   "int8_vs_fp_CPU": {
+    "mean": {
+     "shoulder_pan": 14.472999572753906,
+     "shoulder_lift": 26.916000366210938,
+     "elbow_flex": 17.014999389648438,
+     "wrist_flex": 8.090999603271484,
+     "wrist_roll": 8.20300006866455,
+     "gripper": 6.114999771118164
+    },
+    "max": {
+     "shoulder_pan": 63.56999969482422,
+     "shoulder_lift": 105.2300033569336,
+     "elbow_flex": 84.57599639892578,
+     "wrist_flex": 46.25,
+     "wrist_roll": 47.10300064086914,
+     "gripper": 41.249000549316406
+    },
+    "p99": {
+     "shoulder_pan": 61.29399871826172,
+     "shoulder_lift": 87.41899871826172,
+     "elbow_flex": 68.43900299072266,
+     "wrist_flex": 36.68899917602539,
+     "wrist_roll": 44.30699920654297,
+     "gripper": 39.29600143432617
+    }
+   },
+   "fp_vs_demo_first_step_CPU": {
+    "shoulder_pan": 1.440000057220459,
+    "shoulder_lift": 3.0199999809265137,
+    "elbow_flex": 2.3299999237060547,
+    "wrist_flex": 1.2400000095367432,
+    "wrist_roll": 1.2799999713897705,
+    "gripper": 1.649999976158142
+   }
+  }
+ },
+ "full_int8_latency_partial": {
+  "note": "50 end-to-end calls; run stopped by its time limit after act-place-good-v5 GPU; numbers from the console log",
+  "act-pick-v6-h100": {
+   "fp_NPU": {
+    "median_ms": 16.38,
+    "p90_ms": 17.12
+   },
+   "int8_NPU": {
+    "median_ms": 13.04,
+    "p90_ms": 13.49
+   },
+   "fp_GPU": {
+    "median_ms": 7.92,
+    "p90_ms": 9.36
+   },
+   "int8_GPU": {
+    "median_ms": 7.33,
+    "p90_ms": 9.25
+   },
+   "fp_CPU": {
+    "median_ms": 82.62,
+    "p90_ms": 89.07
+   },
+   "int8_CPU": {
+    "median_ms": 61.62,
+    "p90_ms": 69.15
+   }
+  },
+  "act-place-good-v5": {
+   "fp_NPU": {
+    "median_ms": 12.8
+   },
+   "int8_NPU": {
+    "median_ms": 13.15
+   },
+   "fp_GPU": {
+    "median_ms": 8.61
+   },
+   "int8_GPU": {
+    "median_ms": 9.15
+   }
+  }
+ },
+ "diag_pick_20_frames": {
+  "note": "act-pick-v6-h100, 20 frames, CPU; int8_noembed (ignore Gather) was identical to full int8; int8_sym failed to load in OV 2026.4.1 (m_element_type.is_static check)",
+  "op_counts": {
+   "MatMul": 49,
+   "Gather": 583,
+   "Convolution": 42
+  },
+  "int8_deployed": {
+   "layers_int8": "78/78",
+   "bin_mb": 35.8,
+   "mean": {
+    "shoulder_pan": 17.296,
+    "shoulder_lift": 43.638,
+    "elbow_flex": 31.413,
+    "wrist_flex": 6.451,
+    "wrist_roll": 14.021,
+    "gripper": 7.619
+   },
+   "max": {
+    "shoulder_pan": 48.821,
+    "shoulder_lift": 152.557,
+    "elbow_flex": 104.549,
+    "wrist_flex": 29.913,
+    "wrist_roll": 47.304,
+    "gripper": 29.873
+   }
+  },
+  "int8_orig": {
+   "mean": {
+    "shoulder_pan": 19.257,
+    "shoulder_lift": 47.245,
+    "elbow_flex": 34.905,
+    "wrist_flex": 7.685,
+    "wrist_roll": 15.59,
+    "gripper": 5.991
+   },
+   "max": {
+    "shoulder_pan": 49.412,
+    "shoulder_lift": 153.549,
+    "elbow_flex": 104.118,
+    "wrist_flex": 33.485,
+    "wrist_roll": 47.373,
+    "gripper": 21.921
+   }
+  },
+  "int8_convonly": {
+   "layers_int8": "41/78",
+   "bin_mb": 103.8,
+   "dst": "/home/intel/checkurai/results/int8/act-pick-v6-h100/int8_convonly/act.xml",
+   "mean": {
+    "shoulder_pan": 0.036,
+    "shoulder_lift": 0.092,
+    "elbow_flex": 0.093,
+    "wrist_flex": 0.045,
+    "wrist_roll": 0.042,
+    "gripper": 0.051
+   },
+   "max": {
+    "shoulder_pan": 0.252,
+    "shoulder_lift": 0.611,
+    "elbow_flex": 0.597,
+    "wrist_flex": 0.314,
+    "wrist_roll": 0.143,
+    "gripper": 0.394
+   }
+  }
+ },
+ "convonly_latency_pick_under_load": {
+  "note": "load average ~17 from other jobs; 50 end-to-end calls; stopped by 300 s limit before int8_convonly CPU",
+  "fp_NPU": {
+   "median_ms": 24.4,
+   "p90_ms": 28.25
+  },
+  "int8_convonly_NPU": {
+   "median_ms": 16.5,
+   "p90_ms": 17.43
+  },
+  "fp_GPU": {
+   "median_ms": 11.26,
+   "p90_ms": 20.29
+  },
+  "int8_convonly_GPU": {
+   "median_ms": 9.93,
+   "p90_ms": 15.75
+  },
+  "fp_CPU": {
+   "median_ms": 117.21,
+   "p90_ms": 130.31
+  }
+ },
+ "fp_npu_vs_cpu_50_frames": {
+  "deployed_NPU_f32_error": "Exception from src/inference/src/cpp/core.cpp:117:\nException from src/inference/src/dev/plugin.cpp:54:\nException from src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp:398:\nFailed to parse 'INFERENCE_PRECISION_HINT' option : Exception from src/plugins/intel_npu/src/al/include/intel_np",
+  "deployed_CPU": {
+   "nan": 0,
+   "seconds_incl_compile": 62.1,
+   "range_min": {
+    "shoulder_pan": -66.5,
+    "shoulder_lift": -102.80000305175781,
+    "elbow_flex": -96.19999694824219,
+    "wrist_flex": 56.099998474121094,
+    "wrist_roll": -56.70000076293945,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.099999904632568,
+    "shoulder_lift": 68.19999694824219,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.0999984741211,
+    "wrist_roll": 55.70000076293945,
+    "gripper": 56.099998474121094
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.25,
+    "shoulder_lift": 2.950000047683716,
+    "elbow_flex": 2.3499999046325684,
+    "wrist_flex": 1.0800000429153442,
+    "wrist_roll": 1.559999942779541,
+    "gripper": 3.5199999809265137
+   }
+  },
+  "deployed_GPU": {
+   "nan": 0,
+   "seconds_incl_compile": 50.6,
+   "range_min": {
+    "shoulder_pan": -66.4000015258789,
+    "shoulder_lift": -102.80000305175781,
+    "elbow_flex": -96.19999694824219,
+    "wrist_flex": 56.099998474121094,
+    "wrist_roll": -56.70000076293945,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.099999904632568,
+    "shoulder_lift": 68.19999694824219,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.0999984741211,
+    "wrist_roll": 55.70000076293945,
+    "gripper": 56.0
+   },
+   "vs_cpu_mean": {
+    "shoulder_pan": 0.014000000432133675,
+    "shoulder_lift": 0.029999999329447746,
+    "elbow_flex": 0.02500000037252903,
+    "wrist_flex": 0.027000000700354576,
+    "wrist_roll": 0.01600000075995922,
+    "gripper": 0.017999999225139618
+   },
+   "vs_cpu_max": {
+    "shoulder_pan": 0.06800000369548798,
+    "shoulder_lift": 0.16500000655651093,
+    "elbow_flex": 0.1120000034570694,
+    "wrist_flex": 0.09700000286102295,
+    "wrist_roll": 0.10000000149011612,
+    "gripper": 0.2529999911785126
+   },
+   "vs_cpu_first_step_mean": {
+    "shoulder_pan": 0.014000000432133675,
+    "shoulder_lift": 0.03200000151991844,
+    "elbow_flex": 0.02500000037252903,
+    "wrist_flex": 0.029999999329447746,
+    "wrist_roll": 0.01600000075995922,
+    "gripper": 0.01600000075995922
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.25,
+    "shoulder_lift": 2.950000047683716,
+    "elbow_flex": 2.3499999046325684,
+    "wrist_flex": 1.0800000429153442,
+    "wrist_roll": 1.559999942779541,
+    "gripper": 3.5199999809265137
+   }
+  },
+  "deployed_NPU": {
+   "nan": 0,
+   "seconds_incl_compile": 47.5,
+   "range_min": {
+    "shoulder_pan": -66.5,
+    "shoulder_lift": -102.80000305175781,
+    "elbow_flex": -96.19999694824219,
+    "wrist_flex": 56.099998474121094,
+    "wrist_roll": -56.70000076293945,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.099999904632568,
+    "shoulder_lift": 68.19999694824219,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.0999984741211,
+    "wrist_roll": 55.70000076293945,
+    "gripper": 56.099998474121094
+   },
+   "vs_cpu_mean": {
+    "shoulder_pan": 0.026000000536441803,
+    "shoulder_lift": 0.0560000017285347,
+    "elbow_flex": 0.04699999839067459,
+    "wrist_flex": 0.02199999988079071,
+    "wrist_roll": 0.020999999716877937,
+    "gripper": 0.01600000075995922
+   },
+   "vs_cpu_max": {
+    "shoulder_pan": 0.18000000715255737,
+    "shoulder_lift": 0.4059999883174896,
+    "elbow_flex": 0.35100001096725464,
+    "wrist_flex": 0.0949999988079071,
+    "wrist_roll": 0.14800000190734863,
+    "gripper": 0.24300000071525574
+   },
+   "vs_cpu_first_step_mean": {
+    "shoulder_pan": 0.024000000208616257,
+    "shoulder_lift": 0.05700000002980232,
+    "elbow_flex": 0.052000001072883606,
+    "wrist_flex": 0.02199999988079071,
+    "wrist_roll": 0.01600000075995922,
+    "gripper": 0.012000000104308128
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.2400000095367432,
+    "shoulder_lift": 2.9100000858306885,
+    "elbow_flex": 2.3399999141693115,
+    "wrist_flex": 1.0800000429153442,
+    "wrist_roll": 1.559999942779541,
+    "gripper": 3.5299999713897705
+   }
+  },
+  "deployed_NPU_vs_GPU_max": {
+   "shoulder_pan": 0.15600000321865082,
+   "shoulder_lift": 0.4059999883174896,
+   "elbow_flex": 0.31200000643730164,
+   "wrist_flex": 0.125,
+   "wrist_roll": 0.125,
+   "gripper": 0.31200000643730164
+  },
+  "orig_NPU_f32_error": "Exception from src/inference/src/cpp/core.cpp:117:\nException from src/inference/src/dev/plugin.cpp:54:\nException from src/plugins/intel_npu/src/al/include/intel_npu/config/config.hpp:398:\nFailed to parse 'INFERENCE_PRECISION_HINT' option : Exception from src/plugins/intel_npu/src/al/include/intel_np",
+  "orig_CPU": {
+   "nan": 0,
+   "seconds_incl_compile": 62.4,
+   "range_min": {
+    "shoulder_pan": -66.80000305175781,
+    "shoulder_lift": -103.0,
+    "elbow_flex": -96.5,
+    "wrist_flex": 56.599998474121094,
+    "wrist_roll": -57.0,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.400000095367432,
+    "shoulder_lift": 68.5999984741211,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.19999694824219,
+    "wrist_roll": 55.900001525878906,
+    "gripper": 41.79999923706055
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.3700000047683716,
+    "shoulder_lift": 3.1600000858306885,
+    "elbow_flex": 2.109999895095825,
+    "wrist_flex": 1.0399999618530273,
+    "wrist_roll": 1.600000023841858,
+    "gripper": 1.0199999809265137
+   }
+  },
+  "orig_GPU": {
+   "nan": 0,
+   "seconds_incl_compile": 48.3,
+   "range_min": {
+    "shoulder_pan": -66.80000305175781,
+    "shoulder_lift": -103.0,
+    "elbow_flex": -96.5,
+    "wrist_flex": 56.5,
+    "wrist_roll": -57.0,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.5,
+    "shoulder_lift": 68.5999984741211,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.0999984741211,
+    "wrist_roll": 55.900001525878906,
+    "gripper": 41.79999923706055
+   },
+   "vs_cpu_mean": {
+    "shoulder_pan": 0.008999999612569809,
+    "shoulder_lift": 0.014999999664723873,
+    "elbow_flex": 0.014999999664723873,
+    "wrist_flex": 0.024000000208616257,
+    "wrist_roll": 0.010999999940395355,
+    "gripper": 0.007000000216066837
+   },
+   "vs_cpu_max": {
+    "shoulder_pan": 0.052000001072883606,
+    "shoulder_lift": 0.05700000002980232,
+    "elbow_flex": 0.06300000101327896,
+    "wrist_flex": 0.054999999701976776,
+    "wrist_roll": 0.05299999937415123,
+    "gripper": 0.0949999988079071
+   },
+   "vs_cpu_first_step_mean": {
+    "shoulder_pan": 0.00800000037997961,
+    "shoulder_lift": 0.017000000923871994,
+    "elbow_flex": 0.01600000075995922,
+    "wrist_flex": 0.024000000208616257,
+    "wrist_roll": 0.012000000104308128,
+    "gripper": 0.007000000216066837
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.3799999952316284,
+    "shoulder_lift": 3.1600000858306885,
+    "elbow_flex": 2.119999885559082,
+    "wrist_flex": 1.0399999618530273,
+    "wrist_roll": 1.600000023841858,
+    "gripper": 1.0199999809265137
+   }
+  },
+  "orig_NPU": {
+   "nan": 0,
+   "seconds_incl_compile": 50.7,
+   "range_min": {
+    "shoulder_pan": -66.80000305175781,
+    "shoulder_lift": -102.9000015258789,
+    "elbow_flex": -96.5,
+    "wrist_flex": 56.599998474121094,
+    "wrist_roll": -56.900001525878906,
+    "gripper": 4.599999904632568
+   },
+   "range_max": {
+    "shoulder_pan": 5.400000095367432,
+    "shoulder_lift": 68.5999984741211,
+    "elbow_flex": 61.20000076293945,
+    "wrist_flex": 99.19999694824219,
+    "wrist_roll": 55.900001525878906,
+    "gripper": 41.900001525878906
+   },
+   "vs_cpu_mean": {
+    "shoulder_pan": 0.024000000208616257,
+    "shoulder_lift": 0.04899999871850014,
+    "elbow_flex": 0.041999999433755875,
+    "wrist_flex": 0.02199999988079071,
+    "wrist_roll": 0.01899999938905239,
+    "gripper": 0.013000000268220901
+   },
+   "vs_cpu_max": {
+    "shoulder_pan": 0.16599999368190765,
+    "shoulder_lift": 0.38499999046325684,
+    "elbow_flex": 0.32499998807907104,
+    "wrist_flex": 0.0949999988079071,
+    "wrist_roll": 0.1080000028014183,
+    "gripper": 0.2029999941587448
+   },
+   "vs_cpu_first_step_mean": {
+    "shoulder_pan": 0.023000000044703484,
+    "shoulder_lift": 0.054999999701976776,
+    "elbow_flex": 0.04500000178813934,
+    "wrist_flex": 0.02199999988079071,
+    "wrist_roll": 0.01600000075995922,
+    "gripper": 0.010999999940395355
+   },
+   "vs_demo_first_step_mean": {
+    "shoulder_pan": 1.3600000143051147,
+    "shoulder_lift": 3.119999885559082,
+    "elbow_flex": 2.109999895095825,
+    "wrist_flex": 1.0399999618530273,
+    "wrist_roll": 1.600000023841858,
+    "gripper": 1.0199999809265137
+   }
+  },
+  "orig_NPU_vs_GPU_max": {
+   "shoulder_pan": 0.1509999930858612,
+   "shoulder_lift": 0.382999986410141,
+   "elbow_flex": 0.33799999952316284,
+   "wrist_flex": 0.10000000149011612,
+   "wrist_roll": 0.10400000214576721,
+   "gripper": 0.20499999821186066
+  }
+ },
+ "verdict": "full INT8 not safe for the arm (mean shoulder_lift drift 27-38 deg); conv-only INT8 numerically safe (max 0.61 deg) but only 138 -> 104 MB; not run on the arm"
+}

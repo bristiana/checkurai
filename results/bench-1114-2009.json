@@ -1,0 +1,928 @@
+{
+ "stamp": "1114-2009",
+ "started": "2026-11-14T20:09:46",
+ "system": {
+  "openvino": "2026.4.1-22982-e213a147257-releases/2026/4",
+  "python": "3.13.18",
+  "kernel": "7.0.0-38-generic",
+  "devices": {
+   "NPU": "Intel(R) AI Boost",
+   "GPU": "Intel(R) Arc(TM) B390 GPU (iGPU)",
+   "CPU": "Intel(R) Core(TM) Ultra X9 388H"
+  },
+  "npu_driver": 1789049548
+ },
+ "cell": {
+  "pick_model": "act-pick-v6-h100",
+  "place_good_model": "act-place-good-v5",
+  "place_bad_model": "act-place-bad-v6",
+  "anomaly_model": "patchcore_views_b2g_384_mask",
+  "device": "GPU",
+  "anomaly_device": "GPU",
+  "frames": 5,
+  "hz": 30,
+  "execution": "async",
+  "request_threshold": 0.5
+ },
+ "power_csv": "power-1114-1353.csv",
+ "models": [
+  {
+   "label": "ACT act-pick-v6-h100",
+   "role": "policy",
+   "xml": "~/.local/share/physicalai/models/068a27f3-f229-4f83-a3b7-9b0a3afd604f/exports/openvino/act.xml",
+   "bin_mb": 138.1,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "state": "[1,6]",
+    "images.wrist": "[1,3,384,384]",
+    "images.top": "[1,3,384,384]"
+   },
+   "outputs": {
+    "action": "[1,100,6]"
+   },
+   "ops": 2135,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 1.9,
+     "precision": "f16",
+     "execution_devices": "NPU",
+     "threads": null,
+     "first_ms": 48.23,
+     "n": 1185,
+     "median_ms": 5.03,
+     "mean_ms": 5.06,
+     "p95_ms": 5.63,
+     "p99_ms": 6.42,
+     "min_ms": 4.37,
+     "max_ms": 8.25,
+     "window": [
+      1794715805.452221,
+      1794715811.635273
+     ],
+     "throughput_fps": 274.3,
+     "throughput_nreq": 8,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715796.4377403,
+      1794715801.43782
+     ],
+     "power": {
+      "seconds": 5.43,
+      "samples": 12,
+      "pkg_J": 149.17,
+      "pkg_W_mean": 27.46,
+      "pkg_W_peak": 30.47,
+      "core_J": 22.1,
+      "core_W_mean": 4.07,
+      "core_W_peak": 6.92,
+      "uncore_J": 27.63,
+      "uncore_W_mean": 5.09,
+      "uncore_W_peak": 5.71,
+      "dram_J": 8.79,
+      "dram_W_mean": 1.62,
+      "dram_W_peak": 1.64,
+      "psys_J": 231.1,
+      "psys_W_mean": 42.54,
+      "psys_W_peak": 45.94,
+      "pkg_C_max": 69.0,
+      "hot_C_max": 69.0,
+      "cpu_pct_mean": 17.1,
+      "gpu_mhz_mean": 2000.0,
+      "npu_pct_mean": 84.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 31.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [],
+      "gpu_throttle_pct": 0.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 125.9,
+     "idle_pkg_W": 15.62,
+     "pkg_mJ_per_inference_above_idle": 54.31
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 1.03,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 7.26,
+     "n": 1597,
+     "median_ms": 3.02,
+     "mean_ms": 3.76,
+     "p95_ms": 6.48,
+     "p99_ms": 9.15,
+     "min_ms": 2.68,
+     "max_ms": 10.48,
+     "window": [
+      1794715826.8702126,
+      1794715832.9869068
+     ],
+     "throughput_fps": 290.7,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715818.7427235,
+      1794715823.7428234
+     ],
+     "power": {
+      "seconds": 5.54,
+      "samples": 12,
+      "pkg_J": 228.29,
+      "pkg_W_mean": 41.18,
+      "pkg_W_peak": 43.8,
+      "core_J": 63.98,
+      "core_W_mean": 11.54,
+      "core_W_peak": 13.7,
+      "uncore_J": 126.93,
+      "uncore_W_mean": 22.89,
+      "uncore_W_peak": 23.69,
+      "dram_J": 9.59,
+      "dram_W_mean": 1.73,
+      "dram_W_peak": 1.79,
+      "psys_J": 323.64,
+      "psys_W_mean": 58.38,
+      "psys_W_peak": 61.59,
+      "pkg_C_max": 78.0,
+      "hot_C_max": 78.0,
+      "cpu_pct_mean": 15.9,
+      "gpu_mhz_mean": 2500.0,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 22.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [],
+      "gpu_throttle_pct": 0.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 142.9,
+     "idle_pkg_W": 15.96,
+     "pkg_mJ_per_inference_above_idle": 87.58
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 0.53,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 84.31,
+     "n": 60,
+     "median_ms": 106.17,
+     "mean_ms": 100.54,
+     "p95_ms": 119.22,
+     "p99_ms": 128.25,
+     "min_ms": 76.61,
+     "max_ms": 139.1,
+     "window": [
+      1794715846.673752,
+      1794715852.820464
+     ],
+     "throughput_fps": 17.3,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "100% ps",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715838.9072964,
+      1794715843.9074032
+     ],
+     "power": {
+      "seconds": 6.0,
+      "samples": 13,
+      "pkg_J": 191.06,
+      "pkg_W_mean": 31.82,
+      "pkg_W_peak": 48.31,
+      "core_J": 125.03,
+      "core_W_mean": 20.83,
+      "core_W_peak": 35.52,
+      "uncore_J": 35.68,
+      "uncore_W_mean": 5.94,
+      "uncore_W_peak": 7.51,
+      "dram_J": 7.38,
+      "dram_W_mean": 1.23,
+      "dram_W_peak": 1.27,
+      "psys_J": 283.52,
+      "psys_W_mean": 47.22,
+      "psys_W_peak": 65.17,
+      "pkg_C_max": 92.0,
+      "hot_C_max": 92.0,
+      "cpu_pct_mean": 33.8,
+      "gpu_mhz_mean": 2211.5,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 8.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 69.2,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 3184.3,
+     "idle_pkg_W": 16.69,
+     "pkg_mJ_per_inference_above_idle": 1515.33
+    }
+   ]
+  },
+  {
+   "label": "ACT act-place-good-v5",
+   "role": "policy",
+   "xml": "~/.local/share/physicalai/models/e735299f-1d0b-446d-b99e-02c3663a78db/exports/openvino/act.xml",
+   "bin_mb": 138.1,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "state": "[1,6]",
+    "images.wrist": "[1,3,384,384]",
+    "images.top": "[1,3,384,384]"
+   },
+   "outputs": {
+    "action": "[1,100,6]"
+   },
+   "ops": 2135,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 1.48,
+     "precision": "f16",
+     "execution_devices": "NPU",
+     "threads": null,
+     "first_ms": 40.49,
+     "n": 1196,
+     "median_ms": 4.99,
+     "mean_ms": 5.02,
+     "p95_ms": 5.58,
+     "p99_ms": 6.23,
+     "min_ms": 4.38,
+     "max_ms": 8.68,
+     "window": [
+      1794715867.6768258,
+      1794715873.8991745
+     ],
+     "throughput_fps": 266.9,
+     "throughput_nreq": 8,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715859.0923839,
+      1794715864.0924652
+     ],
+     "power": {
+      "seconds": 5.99,
+      "samples": 13,
+      "pkg_J": 169.67,
+      "pkg_W_mean": 28.31,
+      "pkg_W_peak": 30.8,
+      "core_J": 26.49,
+      "core_W_mean": 4.42,
+      "core_W_peak": 7.03,
+      "uncore_J": 32.48,
+      "uncore_W_mean": 5.42,
+      "uncore_W_peak": 5.96,
+      "dram_J": 9.57,
+      "dram_W_mean": 1.6,
+      "dram_W_peak": 1.63,
+      "psys_J": 259.6,
+      "psys_W_mean": 43.32,
+      "psys_W_peak": 46.16,
+      "pkg_C_max": 71.0,
+      "hot_C_max": 71.0,
+      "cpu_pct_mean": 16.9,
+      "gpu_mhz_mean": 1911.5,
+      "npu_pct_mean": 83.8,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 29.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [],
+      "gpu_throttle_pct": 0.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 141.9,
+     "idle_pkg_W": 15.83,
+     "pkg_mJ_per_inference_above_idle": 62.58
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 0.83,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 5.75,
+     "n": 1411,
+     "median_ms": 3.55,
+     "mean_ms": 4.25,
+     "p95_ms": 7.61,
+     "p99_ms": 10.4,
+     "min_ms": 2.68,
+     "max_ms": 13.37,
+     "window": [
+      1794715888.8635807,
+      1794715895.0036368
+     ],
+     "throughput_fps": 243.9,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715880.9454072,
+      1794715885.9455013
+     ],
+     "power": {
+      "seconds": 5.51,
+      "samples": 12,
+      "pkg_J": 171.3,
+      "pkg_W_mean": 31.1,
+      "pkg_W_peak": 41.9,
+      "core_J": 41.59,
+      "core_W_mean": 7.55,
+      "core_W_peak": 11.56,
+      "uncore_J": 93.02,
+      "uncore_W_mean": 16.89,
+      "uncore_W_peak": 23.42,
+      "dram_J": 9.31,
+      "dram_W_mean": 1.69,
+      "dram_W_peak": 1.76,
+      "psys_J": 261.07,
+      "psys_W_mean": 47.4,
+      "psys_W_peak": 59.49,
+      "pkg_C_max": 72.0,
+      "hot_C_max": 72.0,
+      "cpu_pct_mean": 17.0,
+      "gpu_mhz_mean": 2154.2,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 28.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 66.7,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 121.4,
+     "idle_pkg_W": 16.09,
+     "pkg_mJ_per_inference_above_idle": 58.57
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 0.52,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 82.18,
+     "n": 60,
+     "median_ms": 106.45,
+     "mean_ms": 103.76,
+     "p95_ms": 120.01,
+     "p99_ms": 127.52,
+     "min_ms": 76.9,
+     "max_ms": 130.27,
+     "window": [
+      1794715908.7545662,
+      1794715915.1054838
+     ],
+     "throughput_fps": 17.2,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715901.0447958,
+      1794715906.044899
+     ],
+     "power": {
+      "seconds": 6.01,
+      "samples": 13,
+      "pkg_J": 179.28,
+      "pkg_W_mean": 29.83,
+      "pkg_W_peak": 47.1,
+      "core_J": 113.97,
+      "core_W_mean": 18.97,
+      "core_W_peak": 34.28,
+      "uncore_J": 35.45,
+      "uncore_W_mean": 5.9,
+      "uncore_W_peak": 7.69,
+      "dram_J": 7.43,
+      "dram_W_mean": 1.24,
+      "dram_W_peak": 1.26,
+      "psys_J": 270.87,
+      "psys_W_mean": 45.08,
+      "psys_W_peak": 63.98,
+      "pkg_C_max": 90.0,
+      "hot_C_max": 90.0,
+      "cpu_pct_mean": 33.8,
+      "gpu_mhz_mean": 2019.2,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 10.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 15.4,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 2988.0,
+     "idle_pkg_W": 15.84,
+     "pkg_mJ_per_inference_above_idle": 1401.36
+    }
+   ]
+  },
+  {
+   "label": "ACT act-place-bad-v6",
+   "role": "policy",
+   "xml": "~/.local/share/physicalai/models/4b13783b-956a-4347-a6e8-b0f5d01eeb8c/exports/openvino/act.xml",
+   "bin_mb": 138.1,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "state": "[1,6]",
+    "images.wrist": "[1,3,384,384]",
+    "images.top": "[1,3,384,384]"
+   },
+   "outputs": {
+    "action": "[1,100,6]"
+   },
+   "ops": 2135,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 1.52,
+     "precision": "f16",
+     "execution_devices": "NPU",
+     "threads": null,
+     "first_ms": 23.54,
+     "n": 1194,
+     "median_ms": 4.98,
+     "mean_ms": 5.03,
+     "p95_ms": 5.49,
+     "p99_ms": 6.54,
+     "min_ms": 4.31,
+     "max_ms": 8.66,
+     "window": [
+      1794715930.003794,
+      1794715936.2190702
+     ],
+     "throughput_fps": 264.5,
+     "throughput_nreq": 8,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715921.3804197,
+      1794715926.3805003
+     ],
+     "power": {
+      "seconds": 5.42,
+      "samples": 12,
+      "pkg_J": 152.31,
+      "pkg_W_mean": 28.08,
+      "pkg_W_peak": 29.6,
+      "core_J": 23.21,
+      "core_W_mean": 4.28,
+      "core_W_peak": 6.42,
+      "uncore_J": 27.74,
+      "uncore_W_mean": 5.11,
+      "uncore_W_peak": 5.69,
+      "dram_J": 8.77,
+      "dram_W_mean": 1.62,
+      "dram_W_peak": 1.62,
+      "psys_J": 235.14,
+      "psys_W_mean": 43.35,
+      "psys_W_peak": 44.96,
+      "pkg_C_max": 70.0,
+      "hot_C_max": 70.0,
+      "cpu_pct_mean": 16.1,
+      "gpu_mhz_mean": 1812.5,
+      "npu_pct_mean": 84.1,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 30.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [],
+      "gpu_throttle_pct": 0.0,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 127.6,
+     "idle_pkg_W": 15.44,
+     "pkg_mJ_per_inference_above_idle": 57.48
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "119% rerun",
+      "100% ps",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 0.79,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 8.41,
+     "n": 1394,
+     "median_ms": 3.6,
+     "mean_ms": 4.31,
+     "p95_ms": 7.48,
+     "p99_ms": 10.14,
+     "min_ms": 2.69,
+     "max_ms": 12.46,
+     "window": [
+      1794715951.188241,
+      1794715957.3056793
+     ],
+     "throughput_fps": 243.1,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715943.3365092,
+      1794715948.3365805
+     ],
+     "power": {
+      "seconds": 5.45,
+      "samples": 12,
+      "pkg_J": 173.12,
+      "pkg_W_mean": 31.74,
+      "pkg_W_peak": 41.5,
+      "core_J": 42.61,
+      "core_W_mean": 7.81,
+      "core_W_peak": 11.74,
+      "uncore_J": 93.69,
+      "uncore_W_mean": 17.18,
+      "uncore_W_peak": 23.76,
+      "dram_J": 9.3,
+      "dram_W_mean": 1.7,
+      "dram_W_peak": 1.74,
+      "psys_J": 262.91,
+      "psys_W_mean": 48.2,
+      "psys_W_peak": 58.77,
+      "pkg_C_max": 78.0,
+      "hot_C_max": 78.0,
+      "cpu_pct_mean": 16.9,
+      "gpu_mhz_mean": 2158.3,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 22.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 66.7,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 124.2,
+     "idle_pkg_W": 16.64,
+     "pkg_mJ_per_inference_above_idle": 59.13
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 0.52,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 83.21,
+     "n": 60,
+     "median_ms": 106.97,
+     "mean_ms": 103.85,
+     "p95_ms": 121.13,
+     "p99_ms": 126.53,
+     "min_ms": 77.21,
+     "max_ms": 128.08,
+     "window": [
+      1794715971.13134,
+      1794715977.4841454
+     ],
+     "throughput_fps": 17.5,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715963.3807158,
+      1794715968.3807955
+     ],
+     "power": {
+      "seconds": 6.0,
+      "samples": 13,
+      "pkg_J": 175.23,
+      "pkg_W_mean": 29.2,
+      "pkg_W_peak": 48.03,
+      "core_J": 110.69,
+      "core_W_mean": 18.44,
+      "core_W_peak": 35.13,
+      "uncore_J": 34.51,
+      "uncore_W_mean": 5.75,
+      "uncore_W_peak": 7.49,
+      "dram_J": 7.41,
+      "dram_W_mean": 1.23,
+      "dram_W_peak": 1.27,
+      "psys_J": 266.14,
+      "psys_W_mean": 44.35,
+      "psys_W_peak": 65.06,
+      "pkg_C_max": 88.0,
+      "hot_C_max": 90.0,
+      "cpu_pct_mean": 34.0,
+      "gpu_mhz_mean": 1811.5,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 12.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 53.8,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 2920.5,
+     "idle_pkg_W": 16.21,
+     "pkg_mJ_per_inference_above_idle": 1299.5
+    }
+   ]
+  },
+  {
+   "label": "patchcore_views_b2g_384",
+   "role": "anomaly",
+   "xml": "models/anomaly/patchcore_views_b2g_384/weights/openvino/model.xml",
+   "bin_mb": 286.3,
+   "weights": {
+    "f32": 100.0
+   },
+   "inputs": {
+    "input": "[1,3,384,384]"
+   },
+   "outputs": {
+    "pred_score": "[1]",
+    "anomaly_map": "[1,1,384,384]"
+   },
+   "ops": 451,
+   "runs": [
+    {
+     "device": "NPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "error": "compile failed: Exception from src/inference/src/cpp/core.cpp:117:",
+     "idle_window": [
+      1794715983.6583025,
+      1794715988.658387
+     ]
+    },
+    {
+     "device": "GPU",
+     "busy_at_start": [
+      "119% rerun",
+      "100% ps",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 2.31,
+     "precision": "f16",
+     "execution_devices": [
+      "GPU.0"
+     ],
+     "threads": null,
+     "first_ms": 738.56,
+     "n": 21,
+     "median_ms": 713.02,
+     "mean_ms": 721.25,
+     "p95_ms": 789.4,
+     "p99_ms": 789.49,
+     "min_ms": 655.64,
+     "max_ms": 789.49,
+     "window": [
+      1794716003.0877662,
+      1794716018.4109886
+     ],
+     "throughput_fps": 1.2,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794715992.8677247,
+      1794715997.8677921
+     ],
+     "power": {
+      "seconds": 15.0,
+      "samples": 31,
+      "pkg_J": 459.85,
+      "pkg_W_mean": 30.65,
+      "pkg_W_peak": 33.7,
+      "core_J": 130.47,
+      "core_W_mean": 8.7,
+      "core_W_peak": 11.29,
+      "uncore_J": 250.2,
+      "uncore_W_mean": 16.68,
+      "uncore_W_peak": 18.28,
+      "dram_J": 18.76,
+      "dram_W_mean": 1.25,
+      "dram_W_peak": 1.33,
+      "psys_J": 691.62,
+      "psys_W_mean": 46.11,
+      "psys_W_peak": 49.12,
+      "pkg_C_max": 71.0,
+      "hot_C_max": 75.0,
+      "cpu_pct_mean": 15.6,
+      "gpu_mhz_mean": 2466.1,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 29.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 19.4,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 21897.6,
+     "idle_pkg_W": 16.16,
+     "pkg_mJ_per_inference_above_idle": 10354.76
+    },
+    {
+     "device": "CPU",
+     "busy_at_start": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "heavy_jobs": [],
+     "compile_s": 1.64,
+     "precision": "f32",
+     "execution_devices": [
+      "CPU"
+     ],
+     "threads": 12,
+     "first_ms": 714.56,
+     "n": 16,
+     "median_ms": 939.98,
+     "mean_ms": 940.04,
+     "p95_ms": 968.75,
+     "p99_ms": 974.74,
+     "min_ms": 900.71,
+     "max_ms": 974.74,
+     "window": [
+      1794716041.944049,
+      1794716057.1405191
+     ],
+     "throughput_fps": 2.0,
+     "throughput_nreq": 4,
+     "busy_at_end": [
+      "119% rerun",
+      "47% firefox"
+     ],
+     "idle_window": [
+      1794716032.3903391,
+      1794716037.3904126
+     ],
+     "power": {
+      "seconds": 14.5,
+      "samples": 30,
+      "pkg_J": 385.12,
+      "pkg_W_mean": 26.57,
+      "pkg_W_peak": 28.2,
+      "core_J": 233.09,
+      "core_W_mean": 16.08,
+      "core_W_peak": 18.1,
+      "uncore_J": 76.46,
+      "uncore_W_mean": 5.27,
+      "uncore_W_peak": 5.68,
+      "dram_J": 18.81,
+      "dram_W_mean": 1.3,
+      "dram_W_peak": 1.35,
+      "psys_J": 598.6,
+      "psys_W_mean": 41.29,
+      "psys_W_peak": 43.49,
+      "pkg_C_max": 75.0,
+      "hot_C_max": 75.0,
+      "cpu_pct_mean": 34.8,
+      "gpu_mhz_mean": 1766.7,
+      "npu_pct_mean": 0.0,
+      "bat_W_mean": 0.0,
+      "headroom_C_min": 25.0,
+      "cpu_throttle_events": 0,
+      "gpu_throttle_reasons": [
+       "pl1"
+      ],
+      "gpu_throttle_pct": 36.7,
+      "on_mains": true
+     },
+     "pkg_mJ_per_inference": 24070.0,
+     "idle_pkg_W": 16.28,
+     "pkg_mJ_per_inference_above_idle": 9316.25
+    }
+   ]
+  }
+ ],
+ "idle_busy": [
+  "218% go_home.py ",
+  "119% rerun",
+  "47% firefox"
+ ],
+ "idle": {
+  "seconds": 9.52,
+  "samples": 20,
+  "pkg_J": 151.53,
+  "pkg_W_mean": 15.91,
+  "pkg_W_peak": 19.34,
+  "core_J": 37.73,
+  "core_W_mean": 3.96,
+  "core_W_peak": 7.77,
+  "uncore_J": 72.21,
+  "uncore_W_mean": 7.58,
+  "uncore_W_peak": 7.95,
+  "dram_J": 11.02,
+  "dram_W_mean": 1.16,
+  "dram_W_peak": 1.21,
+  "psys_J": 288.54,
+  "psys_W_mean": 30.3,
+  "psys_W_peak": 34.38,
+  "pkg_C_max": 76.0,
+  "hot_C_max": 76.0,
+  "cpu_pct_mean": 16.2,
+  "gpu_mhz_mean": 2365.0,
+  "npu_pct_mean": 0.0,
+  "bat_W_mean": 0.0,
+  "headroom_C_min": 24.0,
+  "cpu_throttle_events": 0,
+  "gpu_throttle_reasons": [],
+  "gpu_throttle_pct": 0.0,
+  "on_mains": true
+ },
+ "finished": "2026-11-14T20:14:29"
+}

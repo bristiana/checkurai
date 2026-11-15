@@ -136,7 +136,10 @@ def make_inputs(model: ov.Model, rng: np.random.Generator) -> dict[str, np.ndarr
     for inp in model.inputs:
         shape = [d.get_length() for d in inp.get_partial_shape()]
         dtype = inp.get_element_type().to_dtype()
-        out[inp.any_name] = rng.random(shape).astype(dtype)
+        if np.issubdtype(dtype, np.floating):
+            out[inp.any_name] = rng.random(shape).astype(dtype)
+        else:  # token ids / masks (SmolVLA): ones = valid tokens and unpadded cameras, not all-padding zeros
+            out[inp.any_name] = np.ones(shape, dtype=dtype)
     return out
 
 
@@ -250,6 +253,13 @@ def _bench_one(core: ov.Core, model: ov.Model, device: str, inputs: dict, a: arg
     return res
 
 
+def mj_cell(r: dict) -> str:
+    v = r.get("pkg_mJ_per_inference_above_idle")
+    if v is not None:
+        return f"{v:.2f}"
+    return "n/m" if r.get("energy_note") else "–"
+
+
 def fmt(v, nd: int = 1, unit: str = "") -> str:
     if v is None:
         return "–"
@@ -271,6 +281,9 @@ def main() -> int:
     ap.add_argument("--no-throughput", dest="throughput", action="store_false")
     ap.add_argument("--idle-s", type=float, default=15.0, help="idle baseline length before the first model (0 = skip)")
     ap.add_argument("--wait-quiet", action="store_true", help="wait until no training / alignment / arm job runs")
+    ap.add_argument("--idle-each", type=float, default=0.0,
+                    help="seconds of idle baseline right before EACH model x device block (energy above idle uses it)")
+    ap.add_argument("--label", action="append", default=[], help="label for the --act models, in the same order")
     ap.add_argument("--out", type=Path, default=None)
     a = ap.parse_args()
 
@@ -301,9 +314,10 @@ def main() -> int:
             else:
                 log(f"no OpenVINO export found for {cfg[key]}")
     else:
-        for p in act_paths:
+        for k, p in enumerate(act_paths):
             if p.exists():
-                models.append({"label": f"ACT {p.parent.parent.parent.name[:8]}", "xml": p, "role": "policy"})
+                lab = a.label[k] if k < len(a.label) else f"{p.stem.upper()} {p.parent.parent.parent.name[:8]}"
+                models.append({"label": lab, "xml": p, "role": "policy"})
             else:
                 log(f"missing {p}")
     an_paths = a.anomaly or [ROOT / "models" / "anomaly" / cfg["anomaly_model"] / "weights" / "openvino" / "model.xml",
@@ -357,7 +371,16 @@ def main() -> int:
                  "weights": weight_mix(model), **sig, "runs": []}
         inputs = make_inputs(model, rng)
         for d in devices:
-            entry["runs"].append(bench_one(core, model, d, inputs, a))
+            iw = None
+            if power_live and a.idle_each > 0:  # local idle baseline: same conditions, seconds before this block
+                wait_for_arm()
+                i0 = time.time()
+                time.sleep(a.idle_each)
+                iw = (i0, time.time())
+            r = bench_one(core, model, d, inputs, a)
+            if iw:
+                r["idle_window"] = iw
+            entry["runs"].append(r)
             json.dump(report | {"models": report["models"] + [entry]}, out.open("w"), indent=1, default=str)  # partial save
         report["models"].append(entry)
         graphs[m["label"]] = sig
@@ -391,8 +414,18 @@ def main() -> int:
                 r["power"] = s
                 if s and s.get("pkg_J") is not None and r.get("n"):
                     r["pkg_mJ_per_inference"] = round(1000 * s["pkg_J"] / r["n"], 1)
-                    if idle_w is not None:
-                        r["pkg_mJ_per_inference_above_idle"] = round(1000 * (s["pkg_J"] - idle_w * s["seconds"]) / r["n"], 1)
+                    base = idle_w
+                    if r.get("idle_window"):
+                        li = pr.window_stats(rows, *r["idle_window"])
+                        base = li.get("pkg_W_mean") if li else idle_w
+                        r["idle_pkg_W"] = base
+                    if base is not None:
+                        above = 1000 * (s["pkg_J"] - base * s["seconds"]) / r["n"]
+                        if above > 0:
+                            r["pkg_mJ_per_inference_above_idle"] = round(above, 2)
+                        else:  # the model added less than the idle noise: no honest per-inference energy
+                            r["pkg_mJ_per_inference_above_idle"] = None
+                            r["energy_note"] = f"package {s.get('pkg_W_mean')} W during the run, not above idle {base} W"
     report["finished"] = dt.datetime.now().isoformat(timespec="seconds")
     out.write_text(json.dumps(report, indent=1, default=str))
 
@@ -418,7 +451,7 @@ def main() -> int:
             L.append(f"| {m['label']} | {wmix} | {r['device']} | {r.get('precision') or '–'} | {fmt(r.get('compile_s'))} | "
                      f"{fmt(r.get('first_ms'))} | {fmt(r.get('median_ms'), 2)} | {fmt(r.get('p95_ms'), 2)} | {fmt(r.get('throughput_fps'))} | "
                      f"{fmt(p.get('pkg_W_mean'))} | {fmt(p.get('uncore_W_mean'))} | {fmt(p.get('npu_pct_mean'), 0)} | "
-                     f"{fmt(r.get('pkg_mJ_per_inference_above_idle'))} | {heavy} |")
+                     f"{mj_cell(r)} | {heavy} |")
     frames, views = cfg.get("frames", 5), 3
     L += ["", "**What it means for one brick:**"]
     for m in report["models"]:
