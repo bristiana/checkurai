@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckurAI Cell</title>
+<style>
+:root{
+  --bg:#060606;
+  --fg:#f3f3f0;
+  --fg2:rgba(243,243,240,.70);
+  --fg3:rgba(243,243,240,.52);
+  --fg4:rgba(243,243,240,.20);
+  --line:rgba(255,255,255,.12);
+  --panel:rgba(14,14,14,.66);
+  --panel-solid:#0c0c0c;
+  --ease:cubic-bezier(.7,0,.22,1);
+  --out:cubic-bezier(.16,1,.3,1);
+  --top:56px; --bot:62px; --sub:118px;
+  --gut:28px;
+  --side:clamp(250px,16.5vw,318px);
+  --car:4/3; --carN:1.3333;
+  --stageH:calc(100vh - var(--top) - var(--bot) - var(--sub));
+  --tile:min(392px, calc((100vw - 2*(var(--side) + var(--gut) + 28px) - 40px) / 3), calc(100vh - var(--top) - var(--bot) - 250px));
+  --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Cascadia Mono",Consolas,ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (max-height:820px){ :root{ --top:48px; --bot:54px; --sub:96px; --gut:20px; } }
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+.caps{font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3)}
+body.boot *, body.boot *::before, body.boot *::after{transition:none!important}
+
+/* ---------- top HUD ---------- */
+.hud-top{position:fixed;inset:0 0 auto 0;height:var(--top);display:flex;align-items:center;justify-content:space-between;padding:0 var(--gut);z-index:20}
+.brand{display:flex;align-items:baseline;gap:14px}
+.brand b{font-size:14px;font-weight:700;letter-spacing:.26em}
+.brand span{font-size:11px;letter-spacing:.16em;color:var(--fg3);text-transform:uppercase}
+.tally{display:flex;align-items:center;gap:26px;font-size:13px;color:var(--fg2)}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--fg);border:1px solid rgba(255,255,255,.55);padding:5px 9px 4px;transition:opacity .4s}
+.badge:empty{opacity:0;padding:0;border:0}
+.status{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--fg);box-shadow:0 0 10px rgba(255,255,255,.6)}
+body.running .status i{animation:blink 1.6s steps(1) infinite}
+body.idle .status i{background:transparent;border:1px solid var(--fg3);box-shadow:none}
+@keyframes blink{50%{opacity:.25}}
+
+/* ---------- stage ---------- */
+.stage{position:fixed;left:0;right:0;top:var(--top);bottom:calc(var(--bot) + var(--sub));display:grid;place-items:center;pointer-events:none}
+.layer{grid-area:1/1;position:relative}
+.frame{position:relative;overflow:hidden;background:#000;width:min(calc(100vw - 2*(var(--side) + var(--gut) + 18px)), calc(var(--stageH) * var(--carN)));aspect-ratio:var(--car)}
+.frame img.main{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}
+.corners::before,.corners::after,.corners i::before,.corners i::after{content:"";position:absolute;width:22px;height:22px;border:0 solid rgba(255,255,255,.7)}
+.corners::before{top:12px;left:12px;border-top-width:1.5px;border-left-width:1.5px}
+.corners::after{top:12px;right:12px;border-top-width:1.5px;border-right-width:1.5px}
+.corners i::before{bottom:12px;left:12px;border-bottom-width:1.5px;border-left-width:1.5px}
+.corners i::after{bottom:12px;right:12px;border-bottom-width:1.5px;border-right-width:1.5px}
+.corners{position:absolute;inset:0;pointer-events:none}
+.tag{position:absolute;top:18px;left:44px;display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+.tag i{width:7px;height:7px;border-radius:50%;background:#fff;animation:blink 1.6s steps(1) infinite}
+body.idle .tag i{animation:none;background:transparent;border:1px solid #fff}
+.tag .mono{font-family:var(--mono);letter-spacing:.06em;font-weight:500;color:rgba(255,255,255,.85)}
+
+/* top camera + overlay */
+.cam{transform-origin:var(--ox,31%) var(--oy,66%);transition:transform 1.05s var(--ease),opacity .8s var(--ease),filter .8s var(--ease)}
+body.idle .cam .frame img.main{filter:brightness(.55)}
+.ov{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ov text{font-family:var(--sans);font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+.ov text.q{font-size:8.5px;letter-spacing:.08em;font-weight:500}
+body.idle .ov{opacity:.6}
+.pip{position:absolute;left:16px;top:44px;width:20%;aspect-ratio:4/3;border:1px solid rgba(255,255,255,.75);box-shadow:0 8px 30px rgba(0,0,0,.55);overflow:hidden;background:#000}
+.pip img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.pip span{position:absolute;left:8px;top:6px;font-size:10px;font-weight:600;letter-spacing:.18em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.9)}
+.pip.none{display:none}
+body.idle .pip{opacity:.55}
+body.v-insp .cam, body.v-views .cam{transform:scale(2.9);opacity:0;filter:blur(8px)}
+
+/* inspection camera */
+.insp{opacity:0;transform:scale(.3);transform-origin:var(--ox,31%) var(--oy,66%);transition:transform 1.05s var(--ease) .12s,opacity .7s var(--ease) .12s,filter .7s var(--ease)}
+body.v-insp .insp{opacity:1;transform:none}
+body.v-views .insp{opacity:0;transform:scale(1.05);filter:blur(12px);transition-delay:0s}
+.scanwrap{position:absolute;inset:0;overflow:hidden}
+.scan{position:absolute;left:0;right:0;height:2px;top:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.95) 20%,rgba(255,255,255,.95) 80%,transparent);box-shadow:0 0 18px 4px rgba(255,255,255,.35);animation:scan 2.4s linear infinite;opacity:.85}
+.scan::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:90px;background:linear-gradient(to top,rgba(255,255,255,.10),transparent)}
+@keyframes scan{from{top:0}to{top:100%}}
+.box{position:absolute;--k:22px;--w:2px;background:linear-gradient(#fff,#fff) 0 0/var(--k) var(--w),linear-gradient(#fff,#fff) 0 0/var(--w) var(--k),linear-gradient(#fff,#fff) 100% 0/var(--k) var(--w),linear-gradient(#fff,#fff) 100% 0/var(--w) var(--k),linear-gradient(#fff,#fff) 0 100%/var(--k) var(--w),linear-gradient(#fff,#fff) 0 100%/var(--w) var(--k),linear-gradient(#fff,#fff) 100% 100%/var(--k) var(--w),linear-gradient(#fff,#fff) 100% 100%/var(--w) var(--k);background-repeat:no-repeat;filter:drop-shadow(0 0 2px rgba(0,0,0,.8));opacity:0;transform:scale(1.15);transition:opacity .5s var(--out),transform .6s var(--out)}
+.box b{position:absolute;top:10px;left:12px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#fff;white-space:nowrap;background:rgba(10,10,10,.75);padding:4px 7px}
+.box.none{display:none}
+body.v-insp .box{opacity:1;transform:none}
+body.v-insp .box:nth-of-type(1){transition-delay:1.0s} body.v-insp .box:nth-of-type(2){transition-delay:1.15s} body.v-insp .box:nth-of-type(3){transition-delay:1.3s}
+.dimmer{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,0,.55))}
+
+/* three views */
+.views{position:fixed;left:0;right:0;top:var(--top);bottom:var(--bot);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;opacity:0;pointer-events:none;transform-origin:calc(100% - var(--gut) - 40px) 34px;transition:opacity .6s var(--ease),transform .8s var(--ease)}
+body.v-views .views{opacity:1}
+body.post .views{transform:scale(.12);opacity:0}
+.tiles{display:flex;gap:20px}
+.tile{width:var(--tile);opacity:0;transform:translate(var(--dx,0px),var(--dy,0px)) scale(var(--s,.42));transition:transform .9s var(--ease),opacity .6s var(--ease)}
+body.v-views .tile{opacity:1;transform:none}
+body.v-views .tile:nth-child(1){transition-delay:.18s} body.v-views .tile:nth-child(2){transition-delay:.26s} body.v-views .tile:nth-child(3){transition-delay:.34s}
+.tile .img{position:relative;aspect-ratio:1;background:#000;outline:1px solid rgba(255,255,255,.10);outline-offset:-1px}
+.tile.worst .img{outline:1.5px solid #fff}
+.tile .img img{display:block;width:100%;height:100%;object-fit:cover}
+.tile .rings{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.tile .cap{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px}
+.tile .cap .nm{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3)}
+.tile .cap .sc{font-size:22px;font-weight:400;color:var(--fg3)}
+.tile.worst .cap .nm,.tile.worst .cap .sc{color:var(--fg)}
+.tile.worst .cap .sc{font-weight:600}
+.flag{position:absolute;top:10px;left:10px;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;background:#fff;color:#000;padding:4px 7px}
+.ring{fill:none;stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke;transform-box:fill-box;transform-origin:center}
+.ring.echo{stroke-width:1.5;opacity:0}
+.ring.link{stroke-width:1.2;stroke-dasharray:3 3;opacity:0}
+body.v-views .ring.main{animation:ringIn .7s var(--out) 1.05s both}
+body.v-views .ring.echo{animation:echo 1.1s ease-out 1.15s 1 both}
+body.v-views .ring.link{animation:fadeIn .5s ease-out 1.5s both}
+@keyframes ringIn{from{transform:scale(2.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes echo{0%{transform:scale(1);opacity:.9}100%{transform:scale(3.2);opacity:0}}
+@keyframes fadeIn{from{opacity:0}to{opacity:.9}}
+.lens{--L:calc(var(--tile) * .42);position:absolute;width:var(--L);height:var(--L);margin:calc(var(--L) / -2) 0 0 calc(var(--L) / -2);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.55),0 12px 34px rgba(0,0,0,.65);background-color:#000;background-repeat:no-repeat;background-size:calc(var(--tile) * 2) calc(var(--tile) * 2);opacity:0;transform:scale(.6)}
+.lens::after{content:"";position:absolute;left:50%;top:50%;width:var(--rd);height:var(--rd);margin:calc(var(--rd) / -2) 0 0 calc(var(--rd) / -2);border-radius:50%;border:1.5px solid rgba(255,255,255,.9)}
+.lens span{position:absolute;left:50%;bottom:-11px;transform:translateX(-50%);font-size:10px;font-weight:700;letter-spacing:.16em;background:#fff;color:#000;padding:3px 7px;white-space:nowrap}
+body.v-views .lens{animation:lensIn .7s var(--out) 1.45s both}
+@keyframes lensIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+
+.verdict{display:flex;flex-direction:column;align-items:center;gap:14px;opacity:0;transform:translateY(10px);transition:opacity .6s var(--out) .95s,transform .8s var(--out) .95s}
+body.v-views .verdict{opacity:1;transform:none}
+.word{font-size:clamp(52px,6.2vh,76px);font-weight:300;letter-spacing:.22em;line-height:1;padding:12px 10px 12px 34px;text-transform:uppercase}
+.word.alert{background:#fff;color:#000;font-weight:600}
+body.v-views .word{animation:crisp .9s var(--out) 1s both}
+@keyframes crisp{from{letter-spacing:.6em;filter:blur(10px);opacity:0}to{letter-spacing:.22em;filter:none;opacity:1}}
+.route{font-size:15px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--fg2)}
+.scale{position:relative;width:min(520px,60vw);height:44px;margin-top:4px}
+.scale .seg{position:absolute;top:16px;height:1px;background:rgba(255,255,255,.35)}
+.scale .seg.u{background:repeating-linear-gradient(90deg,rgba(255,255,255,.7) 0 4px,transparent 4px 8px)}
+.scale .seg.d{height:3px;top:15px;background:rgba(255,255,255,.75)}
+.scale .tk{position:absolute;top:9px;width:1px;height:15px;background:rgba(255,255,255,.6)}
+.scale .tl{position:absolute;top:28px;transform:translateX(-50%);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);white-space:nowrap}
+.scale .mk{position:absolute;top:11px;width:11px;height:11px;margin-left:-5.5px;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.15)}
+.scale .mv{position:absolute;top:-10px;transform:translateX(-50%);font-size:14px;font-weight:700}
+
+/* subtitle */
+.subtitle{position:fixed;bottom:var(--bot);left:calc(var(--side) + var(--gut) + 18px);right:calc(var(--side) + var(--gut) + 18px);height:var(--sub);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;transition:opacity .35s var(--ease),transform .35s var(--ease)}
+.subtitle .say{font-size:clamp(24px,2.9vh,32px);font-weight:500;letter-spacing:.01em}
+.subtitle .meta{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--fg3)}
+.subtitle.swap{opacity:0;transform:translateY(8px)}
+body.v-views .subtitle{opacity:0;pointer-events:none}
+
+/* side panels */
+.panel{position:fixed;width:var(--side);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.07);padding:16px 16px 18px;z-index:10}
+.panel h6{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--fg3);display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.panel h6 em{font-style:normal;font-weight:500;letter-spacing:.06em;text-transform:none;color:var(--fg4)}
+.flow{left:var(--gut);top:calc(var(--top) + 6px);max-height:calc(100vh - var(--top) - var(--bot) - 12px);display:flex;flex-direction:column;overflow:hidden}
+.flow svg{display:block;width:100%;height:auto;overflow:visible;flex:none}
+.g-edge{fill:none;stroke:rgba(255,255,255,.16);stroke-width:1.4;transition:stroke .5s,stroke-width .5s}
+.g-edge.dash{stroke-dasharray:3 4}
+.g-edge.on{stroke:rgba(255,255,255,.62)}
+.g-edge.live{stroke:#fff;stroke-width:2}
+.g-edge.taken{stroke:#fff;stroke-width:2.4}
+.g-arrow{fill:rgba(255,255,255,.16);transition:fill .5s}
+.g-arrow.on{fill:#fff}
+.g-node{fill:var(--panel-solid);stroke:rgba(255,255,255,.34);stroke-width:1.4;transition:fill .5s,stroke .5s}
+.g-node.visited{fill:rgba(255,255,255,.30);stroke:rgba(255,255,255,.7)}
+.g-node.current{fill:#fff;stroke:#fff}
+.g-halo{fill:none;stroke:#fff;stroke-width:1.2;opacity:0;transform-box:fill-box;transform-origin:center}
+.g-halo.current{animation:halo 2s ease-out infinite}
+body.idle .g-halo.current{animation:none}
+@keyframes halo{0%{transform:scale(.7);opacity:.8}100%{transform:scale(1.9);opacity:0}}
+.g-label{font-size:15px;fill:rgba(255,255,255,.40);transition:fill .5s}
+.g-label.sm{font-size:13.5px}
+.g-label.visited{fill:rgba(255,255,255,.68)}
+.g-label.current{fill:#fff;font-weight:700}
+.g-br{font-size:9.5px;font-weight:700;letter-spacing:1.3px;fill:rgba(255,255,255,.30)}
+.g-br.taken{fill:#fff}
+.g-stop{fill:none;stroke:rgba(255,255,255,.22);stroke-width:1;stroke-dasharray:2 3}
+.g-stop.on{stroke:#fff;stroke-dasharray:none;stroke-width:1.6}
+.g-stopt{font-size:8.5px;font-weight:700;letter-spacing:1.2px;fill:rgba(255,255,255,.26)}
+.g-stopt.on{fill:#fff}
+.g-stop.hide,.g-stopt.hide{display:none}
+
+.feed{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:9px;min-height:0;overflow:hidden}
+.feed:empty{display:none}
+.ev{font-size:13.5px;line-height:1.4;color:var(--fg)}
+.ev.o2{opacity:.38;font-size:13px}
+.ev.o1{opacity:.58;font-size:13px}
+.ev.new{font-size:16px;line-height:1.42;animation:evIn .6s var(--out) both}
+.ev.warn{padding-left:11px;border-left:2px dashed rgba(255,255,255,.8)}
+.ev.why{padding-left:11px;border-left:2px solid #fff}
+.ev .caps{display:block;color:var(--fg2);margin-bottom:3px;font-size:10px}
+.ev.why.o1,.ev.why.o2{border-left-color:rgba(255,255,255,.5)}
+@keyframes evIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+.right{right:var(--gut)}
+.last{top:calc(var(--top) + 6px);display:flex;gap:14px;align-items:center;padding:12px;opacity:0;transform:scale(1.25);transform-origin:100% 0;transition:opacity .5s var(--out),transform .7s var(--out)}
+body.show-last .last{opacity:1;transform:none;transition-delay:.45s}
+.last .th{position:relative;width:76px;height:76px;flex:none;background:#000}
+.last .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.last .t1{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--fg3)}
+.last .t2{margin-top:6px;display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+.last .t2 b{font-weight:700}
+.last .t2 b.alert{background:#fff;color:#000;padding:2px 6px}
+.last .t3{margin-top:5px;font-size:12.5px;color:var(--fg2)}
+
+.arm{bottom:calc(var(--bot) + 6px);padding:14px 14px 12px;transition:opacity .5s}
+.arm.dim{opacity:.5}
+.arm .body{display:flex;gap:10px;align-items:center}
+.arm svg{width:54%;height:auto;flex:none;overflow:visible}
+.a-seg{stroke:rgba(255,255,255,.75);stroke-width:3;stroke-linecap:round;fill:none}
+.a-base{fill:none;stroke:rgba(255,255,255,.4);stroke-width:1.2}
+.a-j{fill:var(--panel-solid);stroke:rgba(255,255,255,.55);stroke-width:1.4;transition:fill .4s,stroke .4s}
+.a-j.mv{fill:#fff;stroke:#fff}
+.a-glow{fill:none;stroke:#fff;stroke-width:1;opacity:0;transform-box:fill-box;transform-origin:center}
+.a-glow.mv{animation:halo 1.4s ease-out infinite}
+.joints{flex:1;display:grid;grid-template-columns:max-content minmax(26px,1fr);column-gap:8px;row-gap:6px;align-items:center;align-content:start;min-width:0}
+.jr{display:contents;font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:rgba(243,243,240,.34);transition:color .4s;white-space:nowrap}
+.jr.mv{color:var(--fg)}
+.jr .bar{height:4px;background:rgba(255,255,255,.16);position:relative;overflow:hidden}
+.jr .bar i{position:absolute;inset:0 auto 0 0;background:#fff;width:0;transition:width .5s var(--out)}
+.arm .note{display:none;margin-top:8px;font-size:10px;color:var(--fg3);letter-spacing:.02em}
+@media (max-width:1500px){
+  .arm svg{width:44%}
+  .jr{font-size:9.5px;letter-spacing:.07em}.joints{column-gap:6px;grid-template-columns:max-content minmax(20px,1fr)}
+  .arm h6 em{display:none}
+  .arm .note{display:block}
+}
+
+/* bottom HUD */
+.hud-bot{position:fixed;left:0;right:0;bottom:0;height:var(--bot);display:flex;align-items:center;justify-content:center;gap:clamp(28px,4vw,64px);border-top:1px solid rgba(255,255,255,.06);z-index:20}
+.fact{display:flex;align-items:baseline;gap:9px;white-space:nowrap}
+.fact b{font-size:clamp(17px,2vh,21px);font-weight:600}
+.fact span{font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--fg3)}
+.fact small{font-size:11px;color:var(--fg4);letter-spacing:.04em}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.15s!important;transition-delay:0s!important}
+}
+img:not([src]){visibility:hidden}
+.nofeed{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#6f6f6f;font-size:15px;letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+.nofeed.none{display:none}
+</style>
+</head>
+<body class="boot idle">
+
+<header class="hud-top">
+  <div class="brand"><b>CHECKURAI</b><span>Autonomous sorting cell</span></div>
+  <div class="tally">
+    <span class="badge" id="badge"></span>
+    <div class="status"><i></i><span id="status">Connecting</span></div>
+  </div>
+</header>
+
+<main class="stage" id="stage" aria-live="polite">
+  <div class="layer cam">
+    <div class="frame" id="camFrame">
+      <img class="main" id="camImg" alt="Top camera: the table seen from above">
+      <svg class="ov" id="ov" viewBox="0 0 640 480" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+      <div class="corners"><i></i></div>
+      <div class="tag"><i></i>Top camera</div>
+      <div class="nofeed none" id="noFeed">No camera feed &middot; the cell program is not running</div>
+      <div class="pip none" id="pip"><img id="wristImg" alt="Wrist camera"><span>WRIST</span></div>
+    </div>
+  </div>
+  <div class="layer insp">
+    <div class="frame" id="inspFrame">
+      <img class="main" id="inspImg" alt="Inspection camera: brick in the mirror booth">
+      <div class="dimmer"></div>
+      <div class="box none" data-v="left"><b>Left mirror</b></div>
+      <div class="box none" data-v="right"><b>Right mirror</b></div>
+      <div class="box none" data-v="direct"><b>Front</b></div>
+      <div class="scanwrap"><div class="scan"></div></div>
+      <div class="corners"><i></i></div>
+      <div class="tag"><i></i>Inspection camera <span class="mono" id="frameNo"></span></div>
+    </div>
+  </div>
+</main>
+
+<section class="views" id="views" aria-label="Inspection result">
+  <div class="tiles" id="tiles"></div>
+  <div class="verdict">
+    <div class="word" id="word"></div>
+    <div class="route" id="route"></div>
+    <div class="scale" id="scale"></div>
+  </div>
+</section>
+
+<div class="subtitle" id="subtitle"><div class="say" id="say">Connecting to the cell</div><div class="meta" id="meta"></div></div>
+
+<aside class="panel flow" aria-label="Decision flow">
+  <h6>Decision flow</h6>
+  <svg id="graph" viewBox="0 0 270 436" role="img" aria-label="Decision flow graph"></svg>
+  <div class="feed" id="feed" aria-live="polite"></div>
+</aside>
+
+<aside class="panel right last" id="last" aria-label="Last brick">
+  <div class="th" id="lastTh"><img id="lastImg" alt=""></div>
+  <div>
+    <div class="t1" id="lastT1"></div>
+    <div class="t2" id="lastT2"></div>
+    <div class="t3" id="lastT3"></div>
+  </div>
+</aside>
+
+<aside class="panel right arm dim" id="arm" aria-label="Arm joints">
+  <h6>Arm <em>strain = lag behind command</em></h6>
+  <div class="body">
+    <svg viewBox="12 38 124 94" id="armSvg">
+      <ellipse class="a-base" cx="40" cy="124" rx="22" ry="5"/>
+      <path class="a-base" d="M26 124 V116 H54 V124" />
+      <g transform="translate(40,98)">
+        <line class="a-seg" x1="0" y1="18" x2="0" y2="0"/>
+        <g transform="rotate(-80)">
+          <line class="a-seg" x1="0" y1="0" x2="46" y2="0"/>
+          <g transform="translate(46,0) rotate(130)">
+            <line class="a-seg" x1="0" y1="0" x2="42" y2="0"/>
+            <g transform="translate(42,0) rotate(42)">
+              <line class="a-seg" x1="0" y1="0" x2="17" y2="0"/>
+              <line class="a-seg" x1="17" y1="-3" x2="28" y2="-6" style="stroke-width:2.2"/>
+              <line class="a-seg" x1="17" y1="3" x2="28" y2="6" style="stroke-width:2.2"/>
+              <circle class="a-glow" data-j="wrist_roll" cx="9" cy="0" r="5"/><circle class="a-j" data-j="wrist_roll" cx="9" cy="0" r="3.6"/>
+              <circle class="a-glow" data-j="gripper" cx="18" cy="0" r="5"/><circle class="a-j" data-j="gripper" cx="18" cy="0" r="3.6"/>
+            </g>
+            <circle class="a-glow" data-j="wrist_flex" cx="42" cy="0" r="5.5"/><circle class="a-j" data-j="wrist_flex" cx="42" cy="0" r="4"/>
+          </g>
+          <circle class="a-glow" data-j="elbow_flex" cx="46" cy="0" r="6"/><circle class="a-j" data-j="elbow_flex" cx="46" cy="0" r="4.6"/>
+        </g>
+        <circle class="a-glow" data-j="shoulder_lift" cx="0" cy="0" r="6"/><circle class="a-j" data-j="shoulder_lift" cx="0" cy="0" r="4.6"/>
+        <circle class="a-glow" data-j="shoulder_pan" cx="0" cy="20" r="6"/><circle class="a-j" data-j="shoulder_pan" cx="0" cy="20" r="4.6"/>
+      </g>
+    </svg>
+    <div class="joints" id="joints"></div>
+  </div>
+  <div class="note">strain = lag behind command</div>
+</aside>
+
+<footer class="hud-bot" aria-label="Efficiency">
+  <div class="fact"><b id="fS">—</b><span>per brick</span><small id="fSn"></small></div>
+  <div class="fact"><b id="fWh">—</b><span>energy per brick</span></div>
+  <div class="fact"><b id="fW">—</b><span>whole laptop, now</span></div>
+  <div class="fact"><b id="fInf">—</b><span id="fInfL">per inspection frame</span></div>
+</footer>
+
+<script>
+addEventListener("error", e => { document.documentElement.dataset.err = e.message || "error"; });   // visible in devtools / DOM dumps
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const NS = "http://www.w3.org/2000/svg";
+function el(parent, tag, attrs, txt){ const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (txt != null) e.textContent = txt; parent.appendChild(e); return e; }
+
+/* ---------- image swap: preload, then replace the element, so a frame never flashes ---------- */
+const pending = {};
+function swapImg(id, url, done){
+  const cur = $(id); if (!cur) return;
+  if (!url){ return; }
+  if (cur.dataset.src === url || pending[id] === url) { return; }
+  pending[id] = url;
+  const pre = new Image();
+  pre.onload = () => {
+    if (pending[id] !== url) return;
+    delete pending[id];
+    const old = $(id); pre.id = id; pre.className = old.className; pre.alt = old.alt; pre.dataset.src = url;
+    old.replaceWith(pre); if (done) done(pre);
+  };
+  pre.onerror = () => { if (pending[id] === url) delete pending[id]; };
+  pre.src = url;
+}
+const ready = {};                        // url -> true once loaded (for the three views)
+function preload(urls, cb){ let left = urls.length; urls.forEach(u => { if (ready[u]) { if (--left === 0) cb(); return; }
+  const i = new Image(); i.onload = i.onerror = () => { ready[u] = true; if (--left === 0) cb(); }; i.src = u; }); }
+
+/* ---------- decision graph: the real Cell.cycle flow; aborts are "stop" exits ---------- */
+const X = 62, XB = 158;
+const N = {
+  home_check:{x:X,y:18,d:1,l:"At home?",stop:1},
+  spot_before:{x:X,y:64,d:1,l:"Spot free?"},
+  pick:{x:X,y:110,l:"Pick"},
+  spot_after_pick:{x:X,y:156,d:1,l:"Brick on spot?",stop:1},
+  inspect:{x:X,y:202,l:"Inspect"},
+  decide:{x:X,y:248,d:1,l:"Decide",stop:1},
+  place_good:{x:X,y:330,l:"Place good",sm:1},
+  place_bad:{x:XB,y:330,l:"Place defect",sm:1},
+  spot_after_place:{x:X,y:376,d:1,l:"Spot clear?",stop:1},
+  sorted:{x:X,y:422,l:"Sorted"}
+};
+const E = [
+  {id:"e1", a:"home_check", b:"spot_before", d:`M${X} 26 V56`},
+  {id:"e2", a:"spot_before", b:"pick", d:`M${X} 72 V102`},
+  {id:"e3", a:"pick", b:"spot_after_pick", d:`M${X} 117 V148`},
+  {id:"e4", a:"spot_after_pick", b:"inspect", d:`M${X} 164 V195`},
+  {id:"e5", a:"inspect", b:"decide", d:`M${X} 209 V240`},
+  {id:"skip", a:"spot_before", b:"inspect", skip:true, dash:1, d:`M${X-9} 64 C16 64 16 202 ${X-8} 202`, ax:X-8, ay:202},
+  {id:"rp", retry:"pick", dash:1, d:`M${X-9} 156 C35 156 35 110 ${X-8} 110`, ax:X-8, ay:110},
+  {id:"bg", br:"good", d:`M${X} 256 V280 M${X} 298 V323`},
+  {id:"bu", br:"unsure", d:`M${X} 256 V266 H118 V280 M118 298 C118 314 ${XB} 308 ${XB} 323`},
+  {id:"bd", br:"defect", d:`M${X} 256 V266 H196 V280 M196 298 C196 314 ${XB} 308 ${XB} 323`},
+  {id:"e8", a:"place_good", b:"spot_after_place", d:`M${X} 337 V368`},
+  {id:"e9", a:"place_bad", b:"spot_after_place", d:`M${XB} 337 C${XB} 356 ${X} 350 ${X} 368`},
+  {id:"rpl", retry:"place", dash:1, d:`M${X-9} 376 C35 376 35 330 ${X-8} 330`, ax:X-8, ay:330},
+  {id:"e10", a:"spot_after_place", b:"sorted", d:`M${X} 384 V415`}
+];
+const BR = [{k:"good",x:X},{k:"unsure",x:118},{k:"defect",x:196}];
+const G = $("graph");
+const edgeEls = {}, nodeEls = {}, brEls = {}, arrowEls = {}, stopEls = {};
+E.forEach(e => { edgeEls[e.id] = el(G, "path", {d:e.d, class:"g-edge"+(e.dash?" dash":"")});
+  if (e.ax) arrowEls[e.id] = el(G, "path", {d:`M${e.ax} ${e.ay} l-6 -3.6 v7.2 z`, class:"g-arrow"}); });
+BR.forEach(b => { brEls[b.k] = el(G, "text", {x:b.x, y:292.5, "text-anchor":"middle", class:"g-br"}, b.k.toUpperCase()); });
+for (const id in N){ const n = N[id];
+  const halo = el(G, "circle", {cx:n.x, cy:n.y, r:9, class:"g-halo"});
+  const shape = n.d ? el(G, "path", {d:`M${n.x} ${n.y-7.5} L${n.x+7.5} ${n.y} L${n.x} ${n.y+7.5} L${n.x-7.5} ${n.y} Z`, class:"g-node"})
+                    : el(G, "circle", {cx:n.x, cy:n.y, r:6.5, class:"g-node"});
+  const label = el(G, "text", {x:n.x+(n.sm?13:16), y:n.y+5, class:"g-label"+(n.sm?" sm":"")}, n.l);
+  nodeEls[id] = {halo, shape, label};
+}
+// every node gets a stop stub; the four real exits are always drawn faintly, any other only when the cycle stopped there
+for (const id in N){ const n = N[id], lab = nodeEls[id].label;
+  const x0 = n.x + (n.sm?13:16) + lab.getComputedTextLength()*1.1 + 8;
+  stopEls[id] = { line: el(G, "path", {d:`M${x0} ${n.y} H${x0+16}`, class:"g-stop"}), txt: el(G, "text", {x:x0+21, y:n.y+3.4, class:"g-stopt"}, "STOP") };
+}
+function renderGraph(g){
+  g = g || {visited:[], retries:{}, rehomes:{}};
+  const V = new Set(g.visited || []); if (g.current) V.add(g.current);
+  const stopped = g.result === "aborted" || g.result === "failed";
+  const stopAt = g.abort_at || (g.branch === "empty" ? "decide" : (stopped ? g.current : null));
+  const retries = g.retries || {};
+  for (const id in nodeEls){
+    const s = (id === g.current || (stopped && id === stopAt)) ? "current" : (V.has(id) ? "visited" : "");
+    const o = nodeEls[id];
+    o.shape.setAttribute("class", "g-node " + s);
+    o.label.setAttribute("class", "g-label " + (N[id].sm ? "sm " : "") + s);
+    o.halo.setAttribute("class", "g-halo " + (s === "current" && !stopped && id !== "sorted" ? "current" : ""));
+  }
+  E.forEach(e => { let cls = "g-edge" + (e.dash ? " dash" : ""), on = false, live = false, taken = false;
+    if (e.br) taken = g.branch === e.br && V.has("decide");
+    else if (e.retry) { on = (retries[e.retry] || 0) > 0; live = on && g.current === e.retry; }
+    else if (e.skip) on = !!g.skipped_pick || (V.has(e.a) && V.has(e.b) && !V.has("pick"));
+    else { on = V.has(e.a) && V.has(e.b); live = on && g.current === e.b; }
+    if (on) cls += " on"; if (live) cls += " live"; if (taken) cls += " taken";
+    edgeEls[e.id].setAttribute("class", cls);
+    if (arrowEls[e.id]) arrowEls[e.id].setAttribute("class", "g-arrow" + (on ? " on" : ""));
+  });
+  BR.forEach(b => brEls[b.k].setAttribute("class", "g-br" + (g.branch === b.k ? " taken" : "")));
+  for (const id in stopEls){
+    const hit = !!stopAt && id === stopAt, show = N[id].stop || hit;
+    stopEls[id].line.setAttribute("class", "g-stop" + (hit ? " on" : "") + (show ? "" : " hide"));
+    stopEls[id].txt.setAttribute("class", "g-stopt" + (hit ? " on" : "") + (show ? "" : " hide"));
+  }
+}
+
+/* ---------- top-camera overlay (scene) ---------- */
+function corners(x, y, w, h, k){
+  return "M"+x+" "+(y+k)+"V"+y+"H"+(x+k)+"M"+(x+w-k)+" "+y+"H"+(x+w)+"V"+(y+k)+"M"+(x+w)+" "+(y+h-k)+"V"+(y+h)+"H"+(x+w-k)+"M"+(x+k)+" "+(y+h)+"H"+x+"V"+(y+h-k);
+}
+function chip(g, x, y, text, inv, anchor, W, quiet){
+  const rc = el(g, "rect", {y: quiet ? y-10 : y-12, height: quiet ? 14 : 17, rx:2, fill: inv ? "#f2f2f2" : quiet ? "rgba(10,10,10,.6)" : "rgba(10,10,10,.8)"});
+  const t = el(g, "text", {x:0, y:y, fill: inv ? "#0a0a0a" : quiet ? "rgba(242,242,242,.8)" : "#f2f2f2", class: quiet ? "q" : ""}, text);
+  const w = t.getComputedTextLength() + 14;
+  let x0 = anchor === "end" ? x - w : anchor === "middle" ? x - w/2 : x;
+  x0 = Math.max(4, Math.min(x0, W - w - 4));
+  rc.setAttribute("x", x0); rc.setAttribute("width", w); t.setAttribute("x", x0 + 7);
+}
+const r1 = v => Math.round(v);
+let ovKey = "";
+function drawOverlay(sc, live){
+  const svg = $("ov");
+  if (!sc || !sc.size){ if (ovKey !== "none"){ svg.innerHTML = ""; ovKey = "none"; } return; }
+  const W = sc.size[0], H = sc.size[1];
+  const objs = sc.objects || [];
+  let play = null, verb = null;
+  if (sc.active){ play = sc.active; const o = objs.find(o => o.color === play); verb = o && o.stage === "pick" ? "picking" : "placing"; }
+  else if (sc.next){ play = sc.next; verb = "next"; }
+  const key = JSON.stringify([W, H, play, verb, live, sc.at_home, sc.spot && sc.spot.map(r1), sc.markers && [sc.markers.seen, (sc.markers.centres||[]).map(c => c.map(r1))], r1(sc.camera_moved_px||0),
+    objs.map(o => [o.color, o.c && o.c.map(r1), r1(o.r||0), o.held, o.on_target, o.in_zone, o.off_cm, o.arrow_to && o.arrow_to.map(r1), o.target_c && o.target_c.map(r1), (o.zone||[]).length, o.bricks && o.bricks.map(b => (b.box||[]).map(r1)), o.brick_count && [o.brick_count.n, o.brick_count.approx]])]);
+  if (key === ovKey) return; ovKey = key;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.innerHTML = '<defs><filter id="ovh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="0" stdDeviation="1.2" flood-color="#000" flood-opacity=".9"/></filter></defs>';
+  const root = el(svg, "g", {filter:"url(#ovh)"});
+  const mk = sc.markers || {};
+  for (const c of (mk.centres || [])){ const d = 9;
+    el(root, "path", {d:corners(c[0]-d, c[1]-d, 2*d, 2*d, 4), stroke:"#f2f2f2", "stroke-width":1.1, fill:"none", opacity:.5}); }
+  for (const o of objs){
+    if (!o.c) continue;
+    const cx = o.c[0], cy = o.c[1], r = o.r, on = o.color === play;
+    const g = el(root, "g", {opacity: o.held ? .4 : 1});
+    const onT = o.on_target != null ? o.on_target : o.in_zone;   // within 15 px of where it stood in its demos
+    if (on && onT != null && o.target_c){                         // dashed circle = the demos' median spot
+      el(g, "circle", {cx:o.target_c[0], cy:o.target_c[1], r:o.target_r || r, fill:"none", stroke:"#f2f2f2", "stroke-width":1.4, "stroke-dasharray":"6 5", opacity:.9});
+      el(g, "path", {d:"M"+(o.target_c[0]-4)+" "+(o.target_c[1]-4)+"L"+(o.target_c[0]+4)+" "+(o.target_c[1]+4)+"M"+(o.target_c[0]+4)+" "+(o.target_c[1]-4)+"L"+(o.target_c[0]-4)+" "+(o.target_c[1]+4), stroke:"#f2f2f2", "stroke-width":1.4});
+      if (onT === false){
+        const tx = (o.arrow_to || o.target_c)[0], ty = (o.arrow_to || o.target_c)[1];
+        el(g, "line", {x1:cx, y1:cy, x2:tx, y2:ty, stroke:"#f2f2f2", "stroke-width":1.6});
+        el(g, "circle", {cx:tx, cy:ty, r:2.4, fill:"#f2f2f2"});
+      }
+    }
+    el(g, "circle", {cx, cy, r, fill:"none", stroke:"#f2f2f2", "stroke-width": on ? 3 : 1.3, opacity: on ? 1 : .8});
+    el(g, "path", {d:"M"+(cx-5)+" "+cy+"H"+(cx+5)+"M"+cx+" "+(cy-5)+"V"+(cy+5), stroke:"#f2f2f2", "stroke-width": on ? 1.6 : 1, opacity: on ? 1 : .7});
+    if (on && live){ const p = el(g, "circle", {cx, cy, r, fill:"none", stroke:"#f2f2f2", "stroke-width":1.5});
+      el(p, "animate", {attributeName:"r", values:r+";"+(r+16), dur:"1.8s", repeatCount:"indefinite"});
+      el(p, "animate", {attributeName:"opacity", values:".7;0", dur:"1.8s", repeatCount:"indefinite"}); }
+    const lx = Math.max(6, Math.min(cx - r*0.72, W - 170)), ly = Math.max(16, cy - r*0.72);
+    chip(g, lx, ly, o.label + (on && verb ? " · " + verb : "") + (o.held ? " · hidden by the arm" : ""), on, null, W);
+    if (on && onT != null){
+      const cm = o.off_cm != null ? Math.round(o.off_cm) : null;
+      const zt = onT ? "on its trained spot" + (cm ? " · ~" + cm + " cm" : "")
+                     : (cm != null ? "~" + cm + " cm from its trained spot" : "off its trained spot");
+      chip(g, lx, ly + 22, zt + (sc.at_home === false ? " · measured at home" : ""), false, null, W);
+    }
+    if (Array.isArray(o.bricks)){
+      for (const b of o.bricks) if (b.box) el(g, "path", {d:corners(b.box[0], b.box[1], b.box[2], b.box[3], 6), stroke:"#f2f2f2", "stroke-width":2, fill:"none"});
+      const bc = o.brick_count, n = bc && bc.n != null ? bc.n : o.bricks.length, approx = !!(bc && bc.approx);
+      chip(g, cx, cy + r + 20, n ? (approx ? "~" : "") + n + " brick" + (n > 1 ? "s" : "") + " waiting" : "plate empty", false, "middle", W);
+    }
+  }
+  if (sc.spot){ const x = sc.spot[0], y = sc.spot[1];
+    el(root, "circle", {cx:x, cy:y, r:9, fill:"none", stroke:"#f2f2f2", "stroke-width":1.2, "stroke-dasharray":"2 2"});
+    el(root, "path", {d:"M"+(x-14)+" "+y+"H"+(x-5)+"M"+(x+5)+" "+y+"H"+(x+14)+"M"+x+" "+(y-14)+"V"+(y-5)+"M"+x+" "+(y+5)+"V"+(y+14), stroke:"#f2f2f2", "stroke-width":1.2});
+    chip(root, x, y + 30, "inspection spot · approx.", false, "middle", W); }
+  if (mk.seen) chip(root, 8, H - 10, "table locked · " + mk.seen + " markers · camera moved " + Math.round(sc.camera_moved_px || 0) + " px, corrected", false, null, W, true);
+}
+
+/* ---------- inspection camera: view boxes mapped through object-fit ---------- */
+function fitMap(img){
+  // returns f(x,y) -> [%x,%y] inside the frame, choosing cover when all rects stay visible, else contain
+  const fr = $("inspFrame"), A = fr.offsetWidth / Math.max(1, fr.offsetHeight);
+  const I = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 16/9;
+  const cover = I >= A ? {sx:A/I, sy:1} : {sx:1, sy:I/A};               // visible fraction of the image
+  const contain = I >= A ? {sx:1, sy:A/I} : {sx:I/A, sy:1};             // image fraction of the frame
+  return {I, A, cover, contain};
+}
+function placeBoxes(rects){
+  const img = $("inspImg"), m = fitMap(img);
+  const vals = Object.values(rects || {});
+  const ox = (1 - m.cover.sx) / 2, oy = (1 - m.cover.sy) / 2;
+  const fits = vals.every(r => r[0] >= ox - .002 && r[2] <= 1 - ox + .002 && r[1] >= oy - .002 && r[3] <= 1 - oy + .002);
+  img.style.objectFit = fits ? "cover" : "contain";
+  const map = fits ? (x, y) => [(x - ox) / m.cover.sx, (y - oy) / m.cover.sy]
+                   : (x, y) => [(1 - m.contain.sx) / 2 + x * m.contain.sx, (1 - m.contain.sy) / 2 + y * m.contain.sy];
+  document.querySelectorAll(".insp .box").forEach(b => {
+    const r = rects && rects[b.dataset.v];
+    if (!r){ b.classList.add("none"); return; }
+    const p0 = map(r[0], r[1]), p1 = map(r[2], r[3]);
+    Object.assign(b.style, {left:(p0[0]*100)+"%", top:(p0[1]*100)+"%", width:((p1[0]-p0[0])*100)+"%", height:((p1[1]-p0[1])*100)+"%"});
+    b.classList.remove("none");
+  });
+  return map;
+}
+
+/* ---------- three views + lens ---------- */
+const ORDER_V = ["left", "direct", "right"];
+let viewsKey = "", viewsReadyKey = "";
+function ringSVG(rg){
+  const r = Math.max(rg.r, .075)*100, cx = rg.x*100, cy = rg.y*100, t = r*.55;
+  return `<circle class="ring echo" cx="${cx}" cy="${cy}" r="${r}"/>`+
+    `<g class="ring main"><circle class="ring" cx="${cx}" cy="${cy}" r="${r}"/>`+
+    `<path class="ring" d="M${cx} ${cy-r-t} V${cy-r-2} M${cx} ${cy+r+2} V${cy+r+t} M${cx-r-t} ${cy} H${cx-r-2} M${cx+r+2} ${cy} H${cx+r+t}"/></g>`;
+}
+function lensFor(v, flag){
+  const rg = v.regions.reduce((a, b) => (b.peak || 0) > (a.peak || 0) ? b : a);
+  const R = .21, cands = [[.79, .13], [.79, .79], [.21, .79]].concat(flag ? [] : [[.21, .13]]);
+  let best = cands[0], bd = -1;
+  for (const c of cands){ const d = Math.hypot(c[0] - rg.x, c[1] - rg.y); if (d > bd){ bd = d; best = c; } }
+  const rr = Math.max(rg.r, .075), dx = best[0] - rg.x, dy = best[1] - rg.y, L = Math.hypot(dx, dy) || 1;
+  const a = [(rg.x + dx/L*(rr + .02))*100, (rg.y + dy/L*(rr + .02))*100], b = [(best[0] - dx/L*R)*100, (best[1] - dy/L*R)*100];
+  const link = `<line class="ring link" x1="${a[0]}" y1="${a[1]}" x2="${b[0]}" y2="${b[1]}"/>`;
+  const lens = `<div class="lens" style="left:${best[0]*100}%;top:${best[1]*100}%;background-image:url('${esc(v.img)}');`+
+    `background-position:calc(var(--L) / 2 - var(--tile) * 2 * ${rg.x}) calc(var(--L) / 2 - var(--tile) * 2 * ${rg.y});--rd:calc(var(--tile) * ${4*rr})"><span>×2</span></div>`;
+  return {link, lens};
+}
+function renderViews(ins, rects){
+  const views = ORDER_V.map(n => (ins.views || []).find(v => v.name === n)).filter(Boolean)
+    .concat((ins.views || []).filter(v => !ORDER_V.includes(v.name)));
+  const alert = ins.verdict !== "good";
+  $("tiles").innerHTML = views.map(v => {
+    const worst = alert && ins.worst_view === v.name, regs = v.regions || [];
+    const L = worst && regs.length ? lensFor(v, true) : null;
+    return `<div class="tile${worst ? " worst" : ""}" data-v="${esc(v.name)}"><div class="img"><img src="${esc(v.img)}" alt="${esc(v.label)} view">`+
+      `<svg class="rings" viewBox="0 0 100 100" preserveAspectRatio="none">${regs.map(ringSVG).join("")}${L ? L.link : ""}</svg>`+
+      (worst ? `<span class="flag">Most unusual</span>` : "") + (L ? L.lens : "") +
+      `</div><div class="cap"><span class="nm">${esc(v.label)}</span><span class="sc">${v.score != null ? v.score.toFixed(2) : "—"}</span></div></div>`;
+  }).join("");
+  const w = $("word");
+  w.textContent = ins.verdict === "good" ? "Good" : ins.verdict === "empty" ? "Empty" : (ins.uncertain ? "Unsure" : "Defect");
+  w.className = "word" + (alert ? " alert" : "");
+  $("route").textContent = ins.task ? "→ " + ins.task + (ins.verdict === "defect" && ins.uncertain ? ", to be safe" : "") : "";
+  const lo = ins.low, hi = ins.high, sc = ins.score;
+  if (lo != null && hi != null && sc != null){
+    const max = Math.max(2.5, hi * 1.3, sc * 1.1), p = v => Math.max(0, Math.min(100, v / max * 100));
+    $("scale").innerHTML =
+      `<div class="seg" style="left:0;width:${p(lo)}%"></div>`+
+      `<div class="seg u" style="left:${p(lo)}%;width:${p(hi)-p(lo)}%"></div>`+
+      `<div class="seg d" style="left:${p(hi)}%;width:${100-p(hi)}%"></div>`+
+      `<div class="tk" style="left:${p(lo)}%"></div><div class="tl" style="left:${p(lo)}%">good limit ${lo.toFixed(2)}</div>`+
+      `<div class="tk" style="left:${p(hi)}%"></div><div class="tl" style="left:${p(hi)}%">defect line ${hi.toFixed(2)}</div>`+
+      `<div class="mk" style="left:${p(sc)}%"></div><div class="mv" style="left:${p(sc)}%">${sc.toFixed(2)}</div>`;
+  } else $("scale").innerHTML = "";
+  flipFromFrame(rects);
+}
+// each tile starts exactly where its view sits in the inspection frame, then unfolds into the row
+function flipFromFrame(rects){
+  const fr = $("inspFrame"), st = $("stage").getBoundingClientRect();
+  const fw = fr.offsetWidth, fh = fr.offsetHeight, fl = st.left + (st.width - fw) / 2, ft = st.top + (st.height - fh) / 2;
+  const map = placeBoxes(rects);
+  const topPx = $("views").offsetTop;
+  document.querySelectorAll("#tiles .tile").forEach(t => {
+    const r = rects && rects[t.dataset.v]; if (!r) return;
+    const p0 = map(r[0], r[1]), p1 = map(r[2], r[3]);
+    const rcx = fl + (p0[0] + p1[0]) / 2 * fw, rcy = ft + (p0[1] + p1[1]) / 2 * fh, rw = Math.max((p1[0]-p0[0]) * fw, (p1[1]-p0[1]) * fh);
+    const tw = t.offsetWidth, tcx = t.offsetLeft + $("tiles").offsetLeft + tw / 2, tcy = topPx + $("tiles").offsetTop + t.offsetTop + tw / 2;
+    t.style.setProperty("--dx", (rcx - tcx) + "px"); t.style.setProperty("--dy", (rcy - tcy) + "px"); t.style.setProperty("--s", (rw / tw).toFixed(3));
+  });
+}
+
+/* ---------- arm HUD ---------- */
+const JDEF = [["shoulder_pan","Base"],["shoulder_lift","Shoulder"],["elbow_flex","Elbow"],["wrist_flex","Wrist"],["wrist_roll","Wrist roll"],["gripper","Gripper"]];
+$("joints").innerHTML = JDEF.map(([k, l]) => `<div class="jr" data-j="${k}"><span>${l}</span><div class="bar"><i></i></div></div>`).join("");
+function renderArm(hud, live){
+  const js = (hud && hud.joints) || [];
+  const by = {}; js.forEach(j => by[j.name] = j);
+  $("arm").classList.toggle("dim", !hud || !live);
+  document.querySelectorAll("#armSvg [data-j]").forEach(c => {
+    const j = by[c.dataset.j], base = c.classList.contains("a-glow") ? "a-glow" : "a-j";
+    c.setAttribute("class", base + (live && j && j.moving ? " mv" : ""));
+  });
+  document.querySelectorAll("#joints .jr").forEach(r => {
+    const j = by[r.dataset.j];
+    if (j && j.label) r.querySelector("span").textContent = j.label;
+    r.classList.toggle("mv", !!(live && j && j.moving));
+    r.querySelector("i").style.width = (j && live ? Math.round(Math.max(0, Math.min(1, j.strain || 0)) * 100) : 0) + "%";
+    r.title = j && j.strain_deg != null ? j.strain_deg + "° behind the command" : "";
+  });
+}
+
+/* ---------- thinking: real events + the explanation ---------- */
+let feedKey = "";
+function renderFeed(d, phase){
+  const items = [];
+  const exp = d.explanation;
+  for (const t of (d.thoughts || [])){
+    if (t.kind === "decide"){ if (exp && exp.text) items.push({why:true, text:exp.text}); continue; }
+    items.push({text:t.text, warn:t.kind === "warn"});
+  }
+  const g = d.graph || {}, cell = d.cell || {};
+  const stopTxt = (g.result === "aborted" || g.result === "failed") ? g.reason : (cell.status === "error" ? cell.error : null);
+  if (stopTxt && !items.some(i => i.text === stopTxt)) items.push({text:stopTxt, warn:true, stop:true});
+  let show;
+  if (phase === "verdict" && items.some(i => i.why)){            // hold the WHY as the newest line during the verdict
+    const why = items.filter(i => i.why).pop();
+    show = items.filter(i => !i.why).slice(-2).concat([why]);
+  } else show = items.slice(-3);
+  const key = JSON.stringify(show);
+  if (key === feedKey) return; feedKey = key;
+  const n = show.length;
+  $("feed").innerHTML = show.map((it, i) => {
+    const age = n - 1 - i, cls = "ev" + (it.why ? " why" : "") + (it.warn ? " warn" : "") + (age === 0 ? " new" : age === 1 ? " o1" : " o2");
+    return `<div class="${cls}">${it.why ? '<span class="caps">Why</span>' : it.stop ? '<span class="caps">Stopped</span>' : ""}${esc(it.text)}</div>`;
+  }).join("");
+}
+
+/* ---------- main render ---------- */
+const SAY = {
+  home_check: n => "Checking the arm is home", spot_before: n => "Checking the inspection spot",
+  pick: n => `Picking up brick ${n}`, spot_after_pick: n => `Checking brick ${n} reached the spot`,
+  inspect: n => `Inspecting brick ${n}`, decide: n => `Deciding on brick ${n}`,
+  place_good: n => `Placing brick ${n} in the good bowl`, place_bad: n => `Placing brick ${n} in the defect bowl`,
+  spot_after_place: n => "Checking the spot is clear", sorted: n => `Brick ${n} sorted`
+};
+const MOTION = {start:"starting", moving:"moving", settling:"settling", done:"done"};
+const DEV = d => d === "GPU" ? "iGPU" : (d || "");
+let lastSay = null, subTimer = null, booted = false, infCache = null;
+function setSub(say, meta, instant){
+  if (say === lastSay && $("meta").textContent === meta) return;
+  const sub = $("subtitle"), put = () => { $("say").textContent = say; $("meta").textContent = meta; sub.classList.remove("swap"); };
+  clearTimeout(subTimer);
+  if (instant || say === lastSay) put(); else { sub.classList.add("swap"); subTimer = setTimeout(put, 260); }
+  lastSay = say;
+}
+function render(d){
+  const cell = d.cell || {}, g = d.graph, focus = d.focus || {}, cam = d.camera || {}, ins = d.inspection, sc = d.scene;
+  const live = cell.status === "running" && !(cell.live_age_s > 5);
+  const brick = cell.cycle;
+
+  // centre: follow focus.mode; the verdict needs its three views loaded first
+  let view = "cam";
+  if (live && focus.mode === "inspection"){
+    if (focus.phase === "verdict" && ins && ins.views && ins.views.length){
+      const vk = JSON.stringify([ins.cycle, ins.t, ins.views.map(v => v.img)]);
+      if (vk !== viewsReadyKey){ preload(ins.views.map(v => v.img), () => { viewsReadyKey = vk; }); }
+      view = viewsReadyKey === vk ? "views" : (cam.inspection ? "insp" : "cam");
+      if (view === "views" && vk !== viewsKey){ viewsKey = vk; renderViews(ins, cam.inspection_rects); void $("tiles").offsetWidth; }
+    } else if (cam.inspection) view = "insp";
+  }
+
+  // images (colour); swapped only once loaded
+  swapImg("camImg", cam.top, img => setAspect(img));
+  $("noFeed").classList.toggle("none", !!cam.top);
+  if (cam.wrist){ $("pip").classList.remove("none"); swapImg("wristImg", cam.wrist); } else $("pip").classList.add("none");
+  if (cam.inspection) swapImg("inspImg", cam.inspection, () => placeBoxes(cam.inspection_rects));
+  if (view === "insp") placeBoxes(cam.inspection_rects);
+  const prog = d.inspect_progress;
+  $("frameNo").textContent = prog && prog.of ? `frame ${Math.min(prog.done + (focus.phase === "analysing" && prog.done < prog.of ? 1 : 0), prog.of)} / ${prog.of}` : "";
+
+  // dive origin = the inspection spot as the top camera sees it
+  if (sc && sc.spot && sc.size){
+    const st = document.documentElement.style;
+    st.setProperty("--ox", (sc.spot[0] / sc.size[0] * 100).toFixed(1) + "%"); st.setProperty("--oy", (sc.spot[1] / sc.size[1] * 100).toFixed(1) + "%");
+  }
+  drawOverlay(sc, live);
+
+  // body state
+  const hist = (d.history || [])[0];
+  const b = document.body;
+  b.className = b.className.split(" ").filter(c => !/^v-/.test(c) && !["post","show-last","running","idle"].includes(c)).join(" ");
+  b.classList.add("v-" + view, live ? "running" : "idle");
+  if (view === "cam") b.classList.add("post");
+  if (view === "cam" && hist) b.classList.add("show-last");
+
+  // status + retry badge
+  $("status").textContent = live ? `Running · brick ${brick}` :
+    cell.status === "error" ? "Error" : cell.status === "running" ? "Feed paused" : cell.status === "stopped" ? "Stopped" : "Idle";
+  const gr = (g && g.retries) || {}, gh = (g && g.rehomes) || {};
+  const nr = (gr.pick || 0) + (gr.place || 0) + (gh.pick || 0) + (gh.place || 0);
+  const stopped = g && (g.result === "aborted" || g.result === "failed");
+  let badge = "";
+  if (g && g.rehoming) badge = "Going home to retry";
+  else if (stopped) badge = "Stopped";
+  else if (g && nr > 0){
+    const pickNodes = ["pick", "spot_after_pick"], placeNodes = ["place_good", "place_bad", "spot_after_place"];
+    const active = ((gr.pick || gh.pick) && pickNodes.includes(g.current)) || ((gr.place || gh.place) && placeNodes.includes(g.current));
+    badge = (active ? "" : "Recovered · ") + nr + (nr > 1 ? " retries" : " retry");
+  }
+  $("badge").textContent = live ? badge : "";
+
+  // subtitle: what the robot is doing now
+  let say, meta = "";
+  if (!live){
+    say = cell.status === "error" ? "Cell stopped" : cell.status === "running" ? "Feed paused" : "Cell idle";
+    meta = cell.status === "error" ? (cell.error || "") : cell.status === "running" ? `no update for ${Math.round(cell.live_age_s)} s` : "showing the last results";
+  } else if (stopped){ say = `Brick ${brick} stopped`; meta = g.reason || ""; }
+  else if (!g || !g.current){ say = brick != null ? `Brick ${brick}` : "Starting"; meta = cell.message || ""; }
+  else {
+    say = (SAY[g.current] || (() => cell.message || ""))(brick);
+    const models = (d.config || {}).models || {};
+    if (g.current === "pick" || g.current === "place_good" || g.current === "place_bad"){
+      const key = g.current === "pick" ? "pick" : g.current;
+      const parts = [];
+      if (g.rehoming) parts.push("going home to retry");
+      else if (g.current === "pick" && gr.pick) parts.push("second try");
+      else if (g.current !== "pick" && gr.place) parts.push("second try");
+      if (models[key]) parts.push("learned skill " + models[key]);
+      if (cell.motion && MOTION[cell.motion]) parts.push(MOTION[cell.motion]);
+      meta = parts.join(" · ");
+    } else if (g.current === "inspect" && prog && prog.of) meta = `frame ${Math.min(prog.done + 1, prog.of)} of ${prog.of} · front + 2 mirrors`;
+    else if (g.current === "sorted" && cell.cycle_s_last != null) meta = `in ${cell.cycle_s_last.toFixed(1)} s`;
+  }
+  setSub(say, meta, !booted);
+
+  // graph, thinking, arm
+  renderGraph(g);
+  $("graph").closest(".panel").classList.toggle("paused", !live);
+  renderFeed(d, focus.phase);
+  renderArm(d.joints_hud, live);
+
+  // last-brick chip (history[0], newest first)
+  if (hist){
+    if (hist.thumb) swapImg("lastImg", hist.thumb);
+    $("lastT1").textContent = "Last brick · #" + hist.cycle;
+    const word = hist.verdict === "good" ? "Good" : hist.verdict === "empty" ? "Empty" : (hist.uncertain ? "Unsure" : "Defect");
+    $("lastT2").innerHTML = `<b class="${hist.verdict === "good" ? "" : "alert"}">${word}</b>`;
+    const where = hist.result === "sorted" ? (hist.verdict === "good" ? "good bowl" : "defect bowl") : (hist.result || "");
+    $("lastT3").textContent = "→ " + where + (hist.score != null ? " · score " + hist.score.toFixed(2) : "");
+  }
+
+  // efficiency: 4 facts, "—" when the backend has no value yet
+  const pw = d.power || {}, pb = pw.brick;
+  $("fS").textContent = pb && pb.s != null ? Math.round(pb.s) + " s" : "—";
+  $("fWh").textContent = pb && pb.Wh != null ? pb.Wh.toFixed(2) + " Wh" : "—";
+  $("fSn").textContent = pb ? "" : "after the first brick";
+  $("fW").textContent = pw.psys_W != null ? Math.round(pw.psys_W) + " W" : "—";
+  if (ins && ins.infer_ms != null) infCache = {ms:ins.infer_ms, dev:ins.device};
+  if (infCache){
+    $("fInf").textContent = infCache.ms >= 1000 ? (infCache.ms / 1000).toFixed(1) + " s" : Math.round(infCache.ms) + " ms";
+    $("fInfL").textContent = "per inspection frame · 3 views" + (infCache.dev ? " · " + DEV(infCache.dev) : "");
+  }
+
+  if (!booted){ booted = true; requestAnimationFrame(() => requestAnimationFrame(() => b.classList.remove("boot"))); }
+}
+function setAspect(img){
+  if (!img.naturalWidth) return;
+  const st = document.documentElement.style;
+  st.setProperty("--car", img.naturalWidth + "/" + img.naturalHeight);
+  st.setProperty("--carN", (img.naturalWidth / img.naturalHeight).toFixed(4));
+}
+
+/* ---------- polling (d.now is the clock; ages come from the backend) ---------- */
+let fails = 0, last = null;
+async function poll(){
+  try {
+    const r = await fetch("/api/state" + location.search, {cache:"no-store"});
+    if (!r.ok) throw new Error(r.status);
+    last = await r.json(); fails = 0;
+    render(last);
+  } catch (e){
+    if (++fails >= 4 && last){                       // backend unreachable: calm paused state on the last data
+      const d = JSON.parse(JSON.stringify(last)); d.cell = Object.assign({}, d.cell, {live_age_s: 99}); render(d);
+      $("meta").textContent = "can't reach the cell";
+    }
+  } finally { setTimeout(poll, 400); }
+}
+addEventListener("resize", () => { if (last && document.body.classList.contains("v-views")) flipFromFrame((last.camera || {}).inspection_rects); });
+poll();
+})();
+</script>
+</body>
+</html>

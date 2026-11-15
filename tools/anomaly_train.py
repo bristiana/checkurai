@@ -48,7 +48,8 @@ import cv2
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from inspection import ROI_PATH, AnomalyScorer, EmptyCheck, brick_window, crop, load_roi  # noqa: E402
+from inspection import (ROI_PATH, VIEWS_PATH, AnomalyScorer, EmptyCheck, MultiViewScorer, brick_window, crop,  # noqa: E402
+                        load_roi, load_views, view_crops)
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data" / "inspection"
@@ -219,7 +220,7 @@ def cmd_train(args) -> None:
     if args.crops:  # brick-centred crops from prepare-brick
         root = ROOT / "data" / f"inspection_crops_{args.crops}"
         crop_cfg = json.loads((root / "crop.json").read_text())
-    name = f"{args.model}_" + (f"{args.crops}_" if args.crops else "") + f"{args.size}" + ("_allfaces" if args.all_faces else "")
+    name = args.name or (f"{args.model}_" + (f"{args.crops}_" if args.crops else "") + f"{args.size}" + ("_allfaces" if args.all_faces else ""))
     out = MODELS / name
     if out.exists():
         shutil.rmtree(out)
@@ -252,10 +253,15 @@ def cmd_train(args) -> None:
             "train_seconds": round(train_s, 1), "device": args.device, "xml": str(xml.relative_to(out))}
     if args.model == "efficientad":
         meta["steps"] = args.steps
+    else:
+        meta["coreset"] = args.coreset
     if crop_cfg:  # the scorer finds the brick in the ROI itself, with this empty-spot reference
         meta["crop"] = crop_cfg
-        for ext in (".png", ".json"):
-            shutil.copy(MODELS / f"empty_ref{ext}", xml.parent / f"empty_ref{ext}")
+        refs = ([VIEW_REFS / r for r in crop_cfg["empty_refs"].values()] if crop_cfg.get("mode") in ("views", "view")
+                else [MODELS / "empty_ref.png"])
+        for ref in refs:
+            for ext in (".png", ".json"):
+                shutil.copy(ref.with_suffix(ext), xml.parent / ref.with_suffix(ext).name)
     (xml.parent / "checkurai_meta.json").write_text(json.dumps(meta, indent=2))
     shutil.rmtree(out / "work", ignore_errors=True)
     print(f"trained {name} in {train_s:.0f}s -> {xml}")
@@ -404,7 +410,8 @@ def cmd_report(args) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    runs = [json.loads(p.read_text()) for p in sorted(RESULTS.glob("*.json")) if p.stem not in ("split", "summary", "empty_check")]
+    runs = [json.loads(p.read_text()) for p in sorted(RESULTS.glob("*.json"))
+            if p.stem not in ("split", "summary", "empty_check") and not p.stem.startswith(("split_views", "views_empty_check"))]
     empty = json.loads((RESULTS / "empty_check.json").read_text()) if (RESULTS / "empty_check.json").exists() else None
     summary = {"models": {r["name"]: {k: v for k, v in r.items() if k != "scores"} for r in runs}, "empty_check": empty}
     table = {}
@@ -431,7 +438,7 @@ def cmd_report(args) -> None:
         everything = s["calib_good"] + s["test_good"] + sum(s["defect"].values(), [])
         bins = np.linspace(min(everything), max(everything), 40)
         ax_h.hist(s["calib_good"] + s["test_good"], bins=bins, alpha=0.7, label="good (held out)", color="#2f6fd8")
-        for (t, v), c in zip(s["defect"].items(), ["#d6452f", "#f0a030", "#8e44ad"], strict=False):
+        for (t, v), c in zip(s["defect"].items(), ["#d6452f", "#f0a030", "#8e44ad", "#2a9d5c", "#c0398f", "#6b5b3e", "#444444"], strict=False):
             ax_h.hist(v, bins=bins, alpha=0.6, label=f"defect: {t}", color=c)
         ax_h.axvline(r["threshold"]["low"], color="k", ls="--", lw=1, label="threshold")
         ax_h.axvspan(r["threshold"]["low"], r["threshold"]["high"], color="0.5", alpha=0.15, label="re-inspect band")
@@ -451,8 +458,329 @@ def cmd_report(args) -> None:
     print(f"wrote {RESULTS / 'summary.json'} and {RESULTS / 'anomaly.png'}")
 
 
+# ---------------------------------------------------------------- mirror booth: direct view + two mirrors
+# Photos from tools/capture_session.sh (data/inspection/{empty,good,defect}). Which brick / defect kind a photo
+# shows comes from the session log (start/end time of every step) -> config/inspection_sessions.json.
+SESSIONS_PATH = ROOT / "config" / "inspection_sessions.json"
+VIEW_SEARCH = {"direct": (560, 1540, 520, 1080), "left": (200, 950, 20, 620), "right": (950, 1720, 20, 600)}  # x0 x1 y0 y1
+VIEW_MIN_AREA = {"direct": 8000, "left": 3000, "right": 3000}  # full-res px; smaller changes are not a brick
+VIEW_REFS = MODELS / "views"
+VCROPS = ROOT / "data" / "inspection_crops_views"
+SPLIT_VIEWS = RESULTS / "split_views.json"
+SESSION_LOG = ROOT / "logs" / "capture_session.log"
+VIEWS_CHECK = RESULTS / "views_empty_check.json"
+
+
+def use_set(tag: str) -> None:
+    """--set TAG: a separate mirror-booth photo set (e.g. after the booth was moved or relit). Every booth path gets
+    the tag, so the original set, its view rects, references, split and models stay as they are:
+    data/inspection_TAG/, config/inspection_{views,sessions}_TAG.json, models/anomaly/views_TAG/,
+    data/inspection_crops_views_TAG/ (train --crops views_TAG), results/anomaly/split_views_TAG.json,
+    logs/capture_session_TAG.log."""
+    global DATA, VIEWS_PATH, VIEW_REFS, VCROPS, SESSIONS_PATH, SPLIT_VIEWS, SESSION_LOG, VIEWS_CHECK
+    DATA = ROOT / "data" / f"inspection_{tag}"
+    VIEWS_PATH = ROOT / "config" / f"inspection_views_{tag}.json"
+    SESSIONS_PATH = ROOT / "config" / f"inspection_sessions_{tag}.json"
+    VIEW_REFS = MODELS / f"views_{tag}"
+    VCROPS = ROOT / "data" / f"inspection_crops_views_{tag}"
+    SPLIT_VIEWS = RESULTS / f"split_views_{tag}.json"
+    SESSION_LOG = ROOT / "logs" / f"capture_session_{tag}.log"
+    VIEWS_CHECK = RESULTS / f"views_empty_check_{tag}.json"
+STEP_TYPES = {"defect_tape": "tape", "defect_marker_line": "marker_line", "marker_line2": "marker_line",
+              "defect_marker_dot": "marker_dot", "defect_other": "other", "marker_bigdot": "marker_bigdot",
+              "marker_smalldot": "marker_smalldot"}
+
+
+def small4(p: Path) -> np.ndarray:
+    return cv2.GaussianBlur(cv2.resize(cv2.imread(str(p)), (480, 270), interpolation=cv2.INTER_AREA), (5, 5), 0).astype(np.float32)
+
+
+def blob_box(diff: np.ndarray, region: tuple[int, int, int, int], thr: float = 40) -> tuple[tuple[int, int, int, int], int] | None:
+    """Largest changed blob inside a full-frame region of a 1/4-scale diff -> (full-frame box, area px)."""
+    x0, x1, y0, y1 = region
+    m = cv2.morphologyEx((diff[y0 // 4:y1 // 4, x0 // 4:x1 // 4] > thr).astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    n, _, st, _ = cv2.connectedComponentsWithStats(m)
+    if n <= 1:
+        return None
+    i = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+    bx, by, bw, bh, area = (int(v) for v in st[i])
+    return (bx * 4 + x0, by * 4 + y0, (bx + bw) * 4 + x0, (by + bh) * 4 + y0), area * 16
+
+
+def empty_median() -> np.ndarray:
+    return np.median(np.stack([small4(p) for p in photos("empty")]), axis=0)
+
+
+def cmd_sessions(args) -> None:
+    """logs/capture_session.log -> config/inspection_sessions.json: [name, HHMMSS start, HHMMSS end] per step."""
+    good, defect, started = [], [], {}
+    for line in SESSION_LOG.read_text().splitlines():
+        f = line.split()
+        if len(f) < 3 or f[1] not in ("start", "end"):
+            continue
+        if f[1] == "start":
+            started[f[2]] = f[0]
+        elif f[2] in started:
+            a = started.pop(f[2])
+            if f[2].startswith("good"):
+                good.append([f"brick{f[2][4:]}", a, f[0]])
+            elif f[2] in STEP_TYPES:
+                defect.append([STEP_TYPES[f[2]], a, f[0]])
+    SESSIONS_PATH.write_text(json.dumps({"good": good, "defect": defect}, indent=1) + "\n")
+    print(f"{len(good)} good bricks, {len(defect)} defect steps -> {SESSIONS_PATH}")
+
+
+def cmd_screen(args) -> None:
+    """Move photos without a brick (saved while swapping bricks) and near-duplicates to data/inspection/_junk/."""
+    med = empty_median()
+    prev, moved = None, []
+    for cls in ("good", "defect"):
+        for p in photos(cls):
+            im = small4(p)
+            diff = np.abs(im - med).max(axis=2)
+            found = blob_box(diff, VIEW_SEARCH["direct"])
+            dup = prev is not None and float((np.abs(im - prev).max(axis=2) > 25).mean()) < 0.002
+            prev = im
+            why = "no brick" if not found or found[1] < VIEW_MIN_AREA["direct"] else "duplicate" if dup else None
+            if why:
+                moved.append(p)
+                print(f"  {cls}/{p.name}: {why}")
+                if not args.dry_run:
+                    (DATA / "_junk" / cls).mkdir(parents=True, exist_ok=True)
+                    p.rename(DATA / "_junk" / cls / p.name)
+    print(f"{len(moved)} photos {'would be ' if args.dry_run else ''}moved to {DATA / '_junk'}")
+
+
+def cmd_views(args) -> None:
+    """View rectangles (union of the brick boxes per view + margin) and one empty-spot reference per view."""
+    med = empty_median()
+    boxes: dict[str, list] = {n: [] for n in VIEW_SEARCH}
+    for p in photos("good") + photos("defect"):
+        diff = np.abs(small4(p) - med).max(axis=2)
+        for n, region in VIEW_SEARCH.items():
+            found = blob_box(diff, region)
+            if found and found[1] >= VIEW_MIN_AREA[n]:
+                boxes[n].append(found[0])
+            else:
+                print(f"  no brick in the {n} view of {p.parent.name}/{p.name}")
+    rects = {}
+    for n, bs in boxes.items():
+        b = np.array(bs)
+        x0, y0 = max(int(b[:, 0].min()) - args.margin, 0), max(int(b[:, 1].min()) - args.margin, 0)
+        x1, y1 = min(int(b[:, 2].max()) + args.margin, 1920), min(int(b[:, 3].max()) + args.margin, 1080)
+        rects[n] = [x0, y0, x1, y1]
+        print(f"{n}: {len(bs)} boxes -> view {rects[n]} ({x1 - x0}x{y1 - y0})")
+    views = {"frame": [1920, 1080], "views": rects, "made_from": f"union of the brick boxes per view + {args.margin}px"}
+    VIEWS_PATH.write_text(json.dumps(views, indent=1) + "\n")
+    # empty references: reference from half the empty photos, tested on the other half + every brick photo
+    empties = [view_crops(cv2.imread(str(p)), views) for p in photos("empty")]
+    bricks = [view_crops(cv2.imread(str(p)), views)["direct"] for p in photos("good") + photos("defect")]
+    VIEW_REFS.mkdir(parents=True, exist_ok=True)
+    res = {}
+    for n in rects:
+        chk = EmptyCheck.from_crops([e[n] for e in empties[0::2]], pixel_thr=args.pixel_thr)
+        fe = np.array([chk.changed_fraction(e[n]) for e in empties[1::2]])
+        thr = 0.02
+        if n == "direct":  # the spot check (is a brick there?) uses the direct view only
+            fb = np.array([chk.changed_fraction(c) for c in bricks])
+            thr = float(np.sqrt(max(fe.max(), 1e-4) * fb.min())) if fb.min() > fe.max() else 0.02
+            res = {"pixel_thr": args.pixel_thr, "frac_thr": round(thr, 5), "empty_frac_max": round(float(fe.max()), 5),
+                   "brick_frac_min": round(float(fb.min()), 5), "empty_correct": float((fe <= thr).mean()),
+                   "brick_correct": float((fb > thr).mean()), "n_empty_eval": len(fe), "n_brick": len(fb)}
+        EmptyCheck.from_crops([e[n] for e in empties], pixel_thr=args.pixel_thr, frac_thr=thr).save(VIEW_REFS / f"{n}_empty.png")
+    RESULTS.mkdir(parents=True, exist_ok=True)
+    VIEWS_CHECK.write_text(json.dumps(res, indent=1))
+    print(f"views -> {VIEWS_PATH}; empty refs -> {VIEW_REFS}; spot check: {res}")
+
+
+def cmd_prepare_views(args) -> None:
+    """Per-brick split (7 train / 3 held out per 10 photos) and one brick crop per view -> data/inspection_crops_views/.
+
+    --out TAG: another crop set (e.g. a smaller margin) -> data/inspection_crops_views_TAG/, made from the existing
+    results/anomaly/split_views.json (same split, not rewritten), no per-view folders; train it with --crops views_TAG.
+    """
+    if args.out:
+        return prepare_views_tagged(args)
+    ses = json.loads(SESSIONS_PATH.read_text())
+    views = load_views(VIEWS_PATH)
+    refs = {n: EmptyCheck.load(VIEW_REFS / f"{n}_empty.png") for n in views["views"]}
+    split, by_brick = [], {}
+    for p in photos("good"):
+        brick = lookup(hhmmss(p), ses["good"])
+        if brick is None:
+            print(f"  good/{p.name} is in no brick step of {SESSIONS_PATH.name}, skipped")
+            continue
+        by_brick.setdefault(brick, []).append(p)
+    held = 0  # alternates calibration / test across bricks, so both get about half of the held-out photos
+    held_out = tuple(int(v) for v in args.held_out.split(","))  # photo index (mod 10) within a brick
+    for brick, ps in by_brick.items():
+        for i, p in enumerate(ps):
+            part = "train_good"
+            if i % 10 in held_out:
+                part = "calib_good" if held % 2 == 0 else "test_good"
+                held += 1
+            split.append({"file": p.name, "class": "good", "brick": brick, "part": part})
+    for p in photos("defect"):
+        split.append({"file": p.name, "class": "defect", "type": lookup(hhmmss(p), ses["defect"]) or "other", "part": "defect"})
+    for d in [VCROPS] + [Path(f"{VCROPS}_{n}") for n in views["views"]]:
+        if d.exists():
+            shutil.rmtree(d)
+    missing = {n: 0 for n in views["views"]}
+    for r in split:
+        for n, v in view_crops(cv2.imread(str(DATA / r["class"] / r["file"])), views).items():
+            box = refs[n].brick_box(v)
+            missing[n] += box is None
+            x, y, s = brick_window((v.shape[1], v.shape[0]), box, args.side or None, args.margin)
+            out = VCROPS / r["part"] / f"{Path(r['file']).stem}__{n}.jpg"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(out), v[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+            one = Path(f"{VCROPS}_{n}") / r["part"] / r["file"]  # this view only
+            one.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(one), v[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cfg = {"mode": "views", "side": args.side or None, "margin": args.margin, "frame": views["frame"],
+           "views": views["views"], "empty_refs": {n: f"{n}_empty.png" for n in views["views"]}}
+    (VCROPS / "crop.json").write_text(json.dumps(cfg))
+    for n in views["views"]:
+        (Path(f"{VCROPS}_{n}") / "crop.json").write_text(json.dumps({**cfg, "mode": "view", "view": n}))
+    SPLIT_VIEWS.write_text(json.dumps(split, indent=1))
+    counts = {}
+    for r in split:
+        counts[r["part"]] = counts.get(r["part"], 0) + 1
+    print("photos:", counts, "| bricks:", {k: len(v) for k, v in by_brick.items()},
+          "| defect types:", {t: sum(r.get("type") == t for r in split) for t in sorted({r.get('type') for r in split} - {None})})
+    print(f"crops (3 per photo) -> {VCROPS}; no brick found (whole view used): {missing}")
+
+
+def prepare_views_tagged(args) -> None:
+    if args.out in ("", *load_views(VIEWS_PATH)["views"]):
+        sys.exit(f"--out {args.out!r} would clash with the baseline / per-view crop folders")
+    split = json.loads(SPLIT_VIEWS.read_text())
+    views = load_views(VIEWS_PATH)
+    refs = {n: EmptyCheck.load(VIEW_REFS / f"{n}_empty.png") for n in views["views"]}
+    out_dir = Path(f"{VCROPS}_{args.out}")
+    if out_dir.exists():
+        shutil.rmtree(out_dir)
+    missing, sides = {n: 0 for n in views["views"]}, []
+    for r in split:
+        for n, v in view_crops(cv2.imread(str(DATA / r["class"] / r["file"])), views).items():
+            box = refs[n].brick_box(v)
+            missing[n] += box is None
+            x, y, s = brick_window((v.shape[1], v.shape[0]), box, args.side or None, args.margin)
+            sides.append(s)
+            out = out_dir / r["part"] / f"{Path(r['file']).stem}__{n}.jpg"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            cv2.imwrite(str(out), v[y:y + s, x:x + s], [cv2.IMWRITE_JPEG_QUALITY, 95])
+    cfg = {"mode": "views", "side": args.side or None, "margin": args.margin, "frame": views["frame"],
+           "views": views["views"], "empty_refs": {n: f"{n}_empty.png" for n in views["views"]}}
+    (out_dir / "crop.json").write_text(json.dumps(cfg))
+    counts = {}
+    for r in split:
+        counts[r["part"]] = counts.get(r["part"], 0) + 1
+    print(f"photos (split_views.json): {counts}; crops (3 per photo, margin {args.margin}) -> {out_dir}; "
+          f"square side median {int(np.median(sides))} px; no brick found (whole view used): {missing}")
+
+
+def cmd_eval_views(args) -> None:
+    """Score = max over the three views; threshold from the calibration goods (as eval); per-view AUROC too.
+
+    --mask: each view's score is the max (--pct < 100: that percentile) of the anomaly map inside the brick outline
+    grown by --dilate view px (MultiViewScorer mask), not the model's image score. Written to --out (default
+    <name>_mask) with "base_model" and "mask", so the cell program loads it as its own --anomaly-model name.
+    """
+    mdir = next((MODELS / args.name).rglob("checkurai_meta.json")).parent
+    meta = json.loads((mdir / "checkurai_meta.json").read_text())
+    split = json.loads(SPLIT_VIEWS.read_text())
+    mask = {"dilate": args.dilate, "pct": args.pct} if args.mask else None
+    out_name = args.out or (f"{args.name}_mask" if mask else args.name)
+    sc = MultiViewScorer(mdir, device=args.device, mask=mask)
+    rows = []
+    for r in split:
+        if r["part"] == "train_good":
+            continue
+        img = cv2.imread(str(DATA / r["class"] / r["file"]))
+        t = time.perf_counter()
+        _, per, ms = sc(img)
+        wall = (time.perf_counter() - t) * 1000
+        rows.append({**r, "views": per, "ms": ms, "wall_ms": wall,
+                     **({"model_views": {n: v["model_score"] for n, v in sc.last.items()}} if mask else {})})
+    # each view on one scale: (s - median) / (max - median) of that view's calibration good scores
+    cal_rows = [r for r in rows if r["part"] == "calib_good"]
+    sc.norm = {n: [float(np.median([r["views"][n] for r in cal_rows])), float(max(r["views"][n] for r in cal_rows))]
+               for n in sc.views["views"]}
+    for r in rows:
+        r["score"] = sc.combine(r["views"])
+    get = lambda part, t=None: np.array([r["score"] for r in rows if r["part"] == part and (t is None or r.get("type") == t)])
+    calib, test, defect = get("calib_good"), get("test_good"), get("defect")
+    types = sorted({r["type"] for r in rows if r["part"] == "defect"})
+    low = float(calib.max())
+    high = float(low + (low - np.median(calib)))
+    low2 = float(test.max())
+    heldout = np.concatenate([calib, test])
+    view_scores = lambda part, n: np.array([r["views"][n] for r in rows if r["part"] in part])
+    res = {
+        "name": out_name, **{k: meta[k] for k in ("model", "image_size", "normal_dirs", "train_seconds")},
+        **({"base_model": args.name, "mask": sc.mask} if mask else {}),
+        "counts": {"calib_good": len(calib), "test_good": len(test), "defect": len(defect)},
+        "auroc_heldout_good_vs_defect": round(auroc(heldout, defect), 4),
+        "auroc_test_good_vs_defect": round(auroc(test, defect), 4),
+        "auroc_per_view": {n: round(auroc(view_scores(("calib_good", "test_good"), n), view_scores(("defect",), n)), 4)
+                           for n in sc.views["views"]},
+        "threshold": {"low": low, "high": high,
+                      "rule": "score (normalised max over views, median over frames) < low: good; >= low: defect (low..high is flagged uncertain)",
+                      "low_from": "max score of the calibration good photos", "high_from": "low + (low - median calibration good score)"},
+        "confusion_at_low": {"defect_as_defect": int((defect >= low).sum()), "defect_as_good": int((defect < low).sum()),
+                             "good_as_defect": int((test >= low).sum()), "good_as_good": int((test < low).sum())},
+        "recall_per_type": {t: {"n": int(len(get("defect", t))), "recall": round(float((get("defect", t) >= low).mean()), 3),
+                                "auroc": round(auroc(heldout, get("defect", t)), 4)} for t in types},
+        "policy_uncertain_is_defect": {
+            "false_alarm_rate_test": f"{int((test >= low).sum())}/{len(test)}",
+            "false_alarm_rate_2fold": f"{int((test >= low).sum()) + int((calib >= low2).sum())}/{len(test) + len(calib)}",
+            "recall_2fold": {t: round(float(((get('defect', t) >= low).mean() + (get('defect', t) >= low2).mean()) / 2), 3) for t in types},
+            "recall_all_2fold": round(float(((defect >= low).mean() + (defect >= low2).mean()) / 2), 3)},
+        "recall_at_high": {"all": f"{int((defect >= high).sum())}/{len(defect)}",
+                           **{t: round(float((get("defect", t) >= high).mean()), 3) for t in types},
+                           "test_good_at_high": int((test >= high).sum())},
+        "latency_ms_3_views": {"device": sc.device, "median": round(float(np.median([r["ms"] for r in rows])), 1),
+                               "wall_median": round(float(np.median([r["wall_ms"] for r in rows])), 1)},
+        "score_rule": ("max over views of (raw - median) / (max - median) of that view's calibration good scores"
+                       + ("; raw = anomaly map inside the brick outline" if mask else "")),
+        "crop": meta.get("crop", {}).get("mode"),
+        "view_norm": sc.norm,
+        "auroc_max_raw": round(auroc(np.array([max(r["views"].values()) for r in rows if r["part"] in ("calib_good", "test_good")]),
+                                     np.array([max(r["views"].values()) for r in rows if r["part"] == "defect"])), 4),
+        "scores": {"calib_good": calib.round(4).tolist(), "test_good": test.round(4).tolist(),
+                   "defect": {t: get("defect", t).round(4).tolist() for t in types}},
+        "rows": [{k: r[k] for k in ("file", "part", "score", "views", "model_views") if k in r} | ({"type": r["type"]} if "type" in r else {})
+                 for r in rows],
+    }
+    (RESULTS / f"{out_name}.json").write_text(json.dumps(res, indent=1))
+    print(json.dumps({k: v for k, v in res.items() if k not in ("scores", "rows")}, indent=1))
+
+
+def cmd_viewset(args) -> None:
+    """One model per view (train --crops views_<view>) -> a set the cell program loads as one model."""
+    out = MODELS / f"patchcore_viewset_{args.size}" / "weights" / "openvino"
+    if out.exists():
+        shutil.rmtree(out)
+    out.mkdir(parents=True)
+    views = load_views(VIEWS_PATH)
+    models = {}
+    for n in views["views"]:
+        xml = next((MODELS / f"patchcore_views_{n}_{args.size}").rglob("*.xml"))
+        models[n] = str(Path("..", "..", "..", xml.relative_to(MODELS)))
+    for ref in VIEW_REFS.glob("*_empty.*"):
+        shutil.copy(ref, out / ref.name)
+    cfg = {"mode": "viewset", "frame": views["frame"], "views": views["views"], "models": models,
+           "empty_refs": {n: f"{n}_empty.png" for n in views["views"]}, "margin": args.margin, "side": None}
+    meta = {"name": out.parents[1].name, "model": "patchcore", "image_size": args.size, "normal_dirs": ["train_good"],
+            "train_seconds": None, "crop": cfg}
+    (out / "checkurai_meta.json").write_text(json.dumps(meta, indent=2))
+    print(f"viewset -> {out}: {models}")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--set", default="", help="mirror-booth photo set tag (before the command), e.g. --set b2 views")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("roi")
     p.add_argument("--margin", type=int, default=24)
@@ -468,6 +796,7 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=2000, help="EfficientAd training steps")
     p.add_argument("--coreset", type=float, default=0.1)
     p.add_argument("--device", choices=["xpu", "cpu"], default="xpu")
+    p.add_argument("--name", default="", help="model name (default: <model>_[<crops>_]<size>); a variant must not reuse an existing name")
     p = sub.add_parser("eval")
     p.add_argument("--name", required=True)
     p.add_argument("--no-latency", action="store_true")
@@ -476,9 +805,33 @@ def main() -> None:
     p.add_argument("--frac-thr", type=float, default=0.02)
     p = sub.add_parser("report")
     p.add_argument("--plot", nargs="*", default=[])
+    sub.add_parser("sessions")
+    p = sub.add_parser("screen")
+    p.add_argument("--dry-run", action="store_true")
+    p = sub.add_parser("views")
+    p.add_argument("--margin", type=int, default=40)
+    p.add_argument("--pixel-thr", type=float, default=35.0)
+    p = sub.add_parser("prepare-views")
+    p.add_argument("--side", type=int, default=0, help="crop side in view px; 0 tight box around the brick")
+    p.add_argument("--margin", type=int, default=40)
+    p.add_argument("--out", default="", help="crop set tag -> data/inspection_crops_views_TAG (keeps split_views.json)")
+    p.add_argument("--held-out", default="2,5,8", help="held-out photo indices (mod 10) per brick; the rest is training")
+    p = sub.add_parser("viewset")
+    p.add_argument("--size", type=int, default=384)
+    p.add_argument("--margin", type=int, default=40)
+    p = sub.add_parser("eval-views")
+    p.add_argument("--name", required=True)
+    p.add_argument("--device", default="GPU")
+    p.add_argument("--mask", action="store_true", help="score the anomaly map inside the brick outline only")
+    p.add_argument("--dilate", type=int, default=MultiViewScorer.MASK_DEFAULTS["dilate"], help="grow the outline (view px)")
+    p.add_argument("--pct", type=float, default=MultiViewScorer.MASK_DEFAULTS["pct"], help="percentile of the map; 100 = max")
+    p.add_argument("--out", default="", help="results name (default: --name, or <name>_mask with --mask)")
     args = ap.parse_args()
+    if args.set:
+        use_set(args.set)
     {"roi": cmd_roi, "prepare": cmd_prepare, "prepare-brick": cmd_prepare_brick, "train": cmd_train, "eval": cmd_eval, "empty": cmd_empty,
-     "report": cmd_report}[args.cmd](args)
+     "report": cmd_report, "sessions": cmd_sessions, "screen": cmd_screen, "views": cmd_views,
+     "prepare-views": cmd_prepare_views, "eval-views": cmd_eval_views, "viewset": cmd_viewset}[args.cmd](args)
 
 
 if __name__ == "__main__":

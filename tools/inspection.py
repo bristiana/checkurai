@@ -43,20 +43,23 @@ def _small(roi_bgr: np.ndarray) -> np.ndarray:
     return cv2.GaussianBlur(im, (5, 5), 0).astype(np.float32)
 
 
-def brick_window(roi_size: int, box: tuple[int, int, int, int] | None, side: int | None = None,
+def brick_window(roi_size: int | tuple[int, int], box: tuple[int, int, int, int] | None, side: int | None = None,
                  margin: int = 24) -> tuple[int, int, int]:
     """Square (x, y, side) in ROI pixels around the brick box, kept inside the ROI.
 
+    roi_size: the side of a square ROI, or (width, height) of a rectangular one (a mirror-booth view).
     side=None: the box's longer edge plus the margin on each side; otherwise a fixed side (same scale
-    for every brick). No box (nothing found): the whole ROI.
+    for every brick). No box (nothing found): the whole square ROI, or the centred square of a rectangle.
     """
+    w, h = (roi_size, roi_size) if isinstance(roi_size, int) else roi_size
     if box is None:
-        return 0, 0, roi_size
+        s = min(w, h)
+        return (w - s) // 2, (h - s) // 2, s
     x0, y0, x1, y1 = box
     s = int(side if side else max(x1 - x0, y1 - y0) + 2 * margin)
-    s = min(max(s, 32), roi_size)
-    x = int(np.clip(round((x0 + x1) / 2 - s / 2), 0, roi_size - s))
-    y = int(np.clip(round((y0 + y1) / 2 - s / 2), 0, roi_size - s))
+    s = min(max(s, 32), w, h)
+    x = int(np.clip(round((x0 + x1) / 2 - s / 2), 0, w - s))
+    y = int(np.clip(round((y0 + y1) / 2 - s / 2), 0, h - s))
     return x, y, s
 
 
@@ -90,18 +93,40 @@ class EmptyCheck:
     def brick_present(self, roi_bgr: np.ndarray) -> bool:
         return self.changed_fraction(roi_bgr) > self.frac_thr
 
-    def brick_box(self, roi_bgr: np.ndarray) -> tuple[int, int, int, int] | None:
-        """(x0, y0, x1, y1) of the largest changed blob in ROI pixels, or None when there is none."""
+    def _blob(self, roi_bgr: np.ndarray) -> tuple[np.ndarray, int, np.ndarray] | None:
+        """(labels, index, stats) of the largest changed blob at EMPTY_SIZE, or None when there is none."""
         m = cv2.morphologyEx(self._changed(roi_bgr).astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
-        n, _, st, _ = cv2.connectedComponentsWithStats(m)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(m)
         if n <= 1:
             return None
         i = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
-        bx, by, bw, bh, area = (int(v) for v in st[i])
-        if area < MIN_BRICK_PX:
+        if int(st[i, cv2.CC_STAT_AREA]) < MIN_BRICK_PX:
             return None
-        k = roi_bgr.shape[0] / EMPTY_SIZE
-        return int(bx * k), int(by * k), int(np.ceil((bx + bw) * k)), int(np.ceil((by + bh) * k))
+        return lab, i, st
+
+    def brick_box(self, roi_bgr: np.ndarray) -> tuple[int, int, int, int] | None:
+        """(x0, y0, x1, y1) of the largest changed blob in ROI pixels, or None when there is none."""
+        blob = self._blob(roi_bgr)
+        if blob is None:
+            return None
+        bx, by, bw, bh, _ = (int(v) for v in blob[2][blob[1]])
+        ky, kx = roi_bgr.shape[0] / EMPTY_SIZE, roi_bgr.shape[1] / EMPTY_SIZE  # the ROI may be a rectangle
+        return int(bx * kx), int(by * ky), int(np.ceil((bx + bw) * kx)), int(np.ceil((by + bh) * ky))
+
+    def brick_mask(self, roi_bgr: np.ndarray, dilate: int = 0) -> np.ndarray | None:
+        """Brick outline in ROI pixels (bool, ROI shape): the largest changed blob with its holes filled, grown by
+        `dilate` ROI px so defects on the brick's edge still count. None when there is no brick."""
+        blob = self._blob(roi_bgr)
+        if blob is None:
+            return None
+        cnts, _ = cv2.findContours((blob[0] == blob[1]).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        filled = np.zeros((EMPTY_SIZE, EMPTY_SIZE), np.float32)
+        cv2.drawContours(filled, cnts, -1, 1.0, cv2.FILLED)
+        h, w = roi_bgr.shape[:2]
+        m = (cv2.resize(filled, (w, h), interpolation=cv2.INTER_LINEAR) >= 0.5).astype(np.uint8)
+        if dilate > 0:
+            m = cv2.dilate(m, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * dilate + 1, 2 * dilate + 1)))
+        return m > 0
 
 
 class AnomalyScorer:
@@ -132,25 +157,31 @@ class AnomalyScorer:
         self.req = self.compiled.create_infer_request()
         self.out_names = [o.any_name for o in self.compiled.outputs]
         self.crop_cfg = self.meta.get("crop")  # None: the whole ROI goes into the model
-        self.empty = EmptyCheck.load(Path(xml).parent / self.crop_cfg["empty_ref"]) if self.crop_cfg else None
+        has_ref = self.crop_cfg and "empty_ref" in self.crop_cfg  # mirror-booth models keep one ref per view
+        self.empty = EmptyCheck.load(Path(xml).parent / self.crop_cfg["empty_ref"]) if has_ref else None
         self.last_window: tuple[int, int, int] | None = None  # (x, y, side) of the last input, ROI pixels
 
     def window(self, roi_bgr: np.ndarray) -> tuple[int, int, int]:
         """The part of the ROI the model looks at: the whole ROI, or a square around the brick."""
-        if not self.crop_cfg:
+        if not self.empty:
             return 0, 0, roi_bgr.shape[0]
         return brick_window(roi_bgr.shape[0], self.empty.brick_box(roi_bgr), self.crop_cfg.get("side"),
                             self.crop_cfg.get("margin", 24))
 
     def prepare(self, roi_bgr: np.ndarray) -> np.ndarray:
         x, y, s = self.last_window = self.window(roi_bgr)
-        rgb = cv2.cvtColor(cv2.resize(roi_bgr[y:y + s, x:x + s], (self.size, self.size), interpolation=cv2.INTER_AREA),
-                           cv2.COLOR_BGR2RGB)
+        return self.to_input(roi_bgr[y:y + s, x:x + s])
+
+    def to_input(self, square_bgr: np.ndarray) -> np.ndarray:
+        rgb = cv2.cvtColor(cv2.resize(square_bgr, (self.size, self.size), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
         return (rgb.astype(np.float32) / 255.0).transpose(2, 0, 1)[None]
 
     def __call__(self, roi_bgr: np.ndarray) -> tuple[float, np.ndarray | None, float]:
         """Return (raw anomaly score, anomaly map or None, inference ms)."""
-        x = self.prepare(roi_bgr)
+        return self.infer(self.prepare(roi_bgr))
+
+    def infer(self, x: np.ndarray) -> tuple[float, np.ndarray | None, float]:
+        """Run the model on one prepared input (to_input); (raw score, anomaly map or None, ms)."""
         t = time.perf_counter()
         res = self.req.infer({0: x})
         ms = (time.perf_counter() - t) * 1000
@@ -164,3 +195,111 @@ class AnomalyScorer:
         if score is None:  # fall back to the max of the map
             score = float(np.max(amap))
         return score, amap, ms
+
+
+# ---------------------------------------------------------------- mirror booth (direct view + two mirrors)
+VIEWS_PATH = ROOT / "config" / "inspection_views.json"
+
+
+def load_views(path: Path = VIEWS_PATH) -> dict:
+    """{"frame": [w, h], "views": {name: [x0, y0, x1, y1]}} in full-frame pixels."""
+    return json.loads(Path(path).read_text())
+
+
+def view_crops(img_bgr: np.ndarray, views: dict) -> dict[str, np.ndarray]:
+    """One rectangle per view (direct, left mirror, right mirror) from a full-resolution inspection frame."""
+    h, w = img_bgr.shape[:2]
+    if (w, h) != tuple(views["frame"]):
+        raise ValueError(f"frame is {w}x{h}, views were made for {views['frame'][0]}x{views['frame'][1]}")
+    return {n: img_bgr[y0:y1, x0:x1] for n, (x0, y0, x1, y1) in views["views"].items()}
+
+
+class MultiViewScorer:
+    """Anomaly score of a brick in the mirror booth (direct view + two mirrors); the brick's score is its worst view.
+
+    `path` is a model folder (or its model.xml) whose checkurai_meta.json "crop" is either
+      {"mode": "views", ...}    one model for all three views, or
+      {"mode": "viewset", "models": {view: xml path relative to the folder}, ...}   one model per view.
+    Either way the meta carries the view rectangles and one empty-spot reference per view; in each view the
+    brick is the largest blob that differs from that reference, and a square around it (box + margin) goes
+    into that view's model. norm = {view: [median, max]} of the calibration good scores (from eval-views):
+    each view's score becomes (s - median) / (max - median), so the views are compared on one scale.
+    mask = None: a view's score is the model's image score. mask = {"dilate": px, "pct": p} (or True for the
+    defaults): the score is the p-th percentile (100 = max) of the anomaly map inside the brick outline (the
+    blob that differs from the view's empty reference, holes filled, grown by `dilate` view px), so the
+    background, plate and mirror edges cannot score. The norm must come from the same scoring (eval-views --mask).
+    Call it with the full inspection frame.
+    """
+
+    MASK_DEFAULTS = {"dilate": 12, "pct": 100.0}
+
+    def __init__(self, path: Path, device: str = "GPU", fallback: str | None = "CPU", norm: dict | None = None,
+                 mask: dict | bool | None = None):
+        path = Path(path)
+        mdir = path if path.is_dir() else path.parent
+        self.meta = json.loads((mdir / "checkurai_meta.json").read_text())
+        cfg = self.cfg = self.meta.get("crop") or {}
+        if cfg.get("mode") == "viewset":
+            self.models = {n: AnomalyScorer((mdir / rel).resolve(), device=device, fallback=fallback)
+                           for n, rel in cfg["models"].items()}
+        elif cfg.get("mode") == "views":
+            shared = AnomalyScorer(path if path.suffix == ".xml" else next(mdir.glob("*.xml")), device=device, fallback=fallback)
+            self.models = {n: shared for n in cfg["views"]}
+        else:
+            raise ValueError(f"{mdir} is not a mirror-booth (views / viewset) model")
+        first = next(iter(self.models.values()))
+        self.device, self.size = first.device, first.size
+        self.views = {"frame": cfg["frame"], "views": cfg["views"]}
+        self.empty = {n: EmptyCheck.load(mdir / ref) for n, ref in cfg["empty_refs"].items()}
+        self.norm = norm
+        self.mask = None if not mask else {**self.MASK_DEFAULTS, **(mask if isinstance(mask, dict) else {})}
+        self.last: dict[str, dict] = {}  # per view: score, window (x, y, side in view pixels), ms (+ model score, mask)
+
+    def spot(self, img_bgr: np.ndarray) -> float:
+        """Changed fraction of the direct view against its empty reference (brick present if > frac_thr)."""
+        return self.empty["direct"].changed_fraction(view_crops(img_bgr, self.views)["direct"])
+
+    def windows(self, img_bgr: np.ndarray, with_mask: bool = False) -> dict[str, tuple]:
+        """{view: (model input square, (x, y, side))}; with_mask adds the brick outline inside the square (or None)."""
+        out = {}
+        for n, v in view_crops(img_bgr, self.views).items():
+            x, y, s = brick_window((v.shape[1], v.shape[0]), self.empty[n].brick_box(v), self.cfg.get("side"),
+                                   self.cfg.get("margin", 24))
+            out[n] = (v[y:y + s, x:x + s], (x, y, s))
+            if with_mask:
+                mk = self.empty[n].brick_mask(v, int(self.mask["dilate"]))
+                out[n] += (None if mk is None else mk[y:y + s, x:x + s],)
+        return out
+
+    def masked_score(self, amap: np.ndarray, mask: np.ndarray | None) -> float:
+        """Percentile (max at 100) of the anomaly map inside the brick outline; the whole map when there is none."""
+        amap = np.asarray(amap, np.float32)
+        if mask is not None:
+            mask = cv2.resize(mask.astype(np.uint8), (amap.shape[1], amap.shape[0]), interpolation=cv2.INTER_NEAREST) > 0
+        vals = amap[mask] if mask is not None and mask.any() else amap.reshape(-1)
+        pct = float(self.mask["pct"])
+        return float(vals.max()) if pct >= 100 else float(np.percentile(vals, pct))
+
+    def __call__(self, img_bgr: np.ndarray) -> tuple[float, dict[str, float], float]:
+        """(score = max over views of the normalised scores, {view: raw score}, total inference ms)."""
+        self.last, total = {}, 0.0
+        for n, item in self.windows(img_bgr, with_mask=self.mask is not None).items():
+            sq, win = item[:2]
+            m = self.models[n]
+            s, amap, ms = m.infer(m.to_input(sq))
+            self.last[n] = {"score": s, "window": win, "ms": ms}
+            if self.mask is not None and amap is not None:
+                self.last[n].update(model_score=s, score=self.masked_score(amap, item[2]),
+                                    mask_px=None if item[2] is None else int(item[2].sum()))
+            total += ms
+        per = {n: r["score"] for n, r in self.last.items()}
+        return self.combine(per), per, total
+
+    def combine(self, per: dict[str, float]) -> float:
+        if not self.norm:
+            return max(per.values())
+        return max((s - self.norm[n][0]) / max(self.norm[n][1] - self.norm[n][0], 1e-6) for n, s in per.items())
+
+    def montage(self, img_bgr: np.ndarray, side: int = 256) -> np.ndarray:
+        """The three model inputs side by side (for the cycle log)."""
+        return np.hstack([cv2.resize(sq, (side, side), interpolation=cv2.INTER_AREA) for sq, _ in self.windows(img_bgr).values()])

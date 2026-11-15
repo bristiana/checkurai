@@ -1,0 +1,1156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CheckurAI Cell</title>
+<style>
+:root {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-2: #21211f;
+  --surface-3: #2a2a28;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  /* status (fixed): good / unsure / defect */
+  --good: #0ca30c;
+  --warn: #fab219;
+  --bad: #d03b3b;
+  /* devices: categorical slots 1-3 (dark), validated all-pairs; always shown with their name */
+  --gpu: #3987e5;
+  --npu: #d95926;
+  --cpu: #199e70;
+  --r: 14px;
+  --pad: clamp(10px, 1.05vw, 22px);
+  --gap: clamp(7px, 1.05vh, 16px);
+  --cols: minmax(0, 1fr) minmax(0, 1.12fr) minmax(0, 0.98fr);
+  --hist-n: 8;
+}
+html { font-size: clamp(10.5px, min(1.42vh, 0.8vw), 18px); }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--page);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  height: 100vh; width: 100vw; overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--gap);
+  padding: var(--pad);
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 0.85rem 1.05rem;
+  min-height: 0; min-width: 0;
+  display: flex; flex-direction: column;
+  position: relative;
+}
+.ptitle {
+  display: flex; align-items: baseline; gap: 0.6rem;
+  font-size: 0.82rem; letter-spacing: 0.09em; text-transform: uppercase;
+  color: var(--ink-2); font-weight: 650; margin-bottom: 0.55rem; white-space: nowrap; min-width: 0;
+}
+.ptitle .sub { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; }
+.ptitle .right { margin-left: auto; }
+.waiting {
+  flex: 1; display: grid; place-items: center; text-align: center;
+  color: var(--muted); font-size: 0.95rem; border: 1px dashed var(--axis); border-radius: 10px; padding: 0.8rem;
+  min-height: 3rem;
+}
+.dot { width: 0.62rem; height: 0.62rem; border-radius: 50%; display: inline-block; flex: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 0.38rem; padding: 0.12rem 0.5rem 0.12rem 0.42rem;
+  border-radius: 999px; background: var(--surface-3); color: var(--ink); font-size: 0.78rem; font-weight: 600; white-space: nowrap;
+}
+.chip .dot { width: 0.55rem; height: 0.55rem; }
+.d-GPU { background: var(--gpu); } .d-NPU { background: var(--npu); } .d-CPU { background: var(--cpu); }
+.s-good { background: var(--good); } .s-warn { background: var(--warn); } .s-bad { background: var(--bad); }
+
+/* ---------- header ---------- */
+header { display: flex; align-items: center; gap: 1.1rem; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 0.8rem; min-width: 0; }
+.logo { width: 2.5rem; height: 2.5rem; flex: none; }
+.brand h1 { font-size: 1.45rem; font-weight: 650; letter-spacing: -0.01em; white-space: nowrap; }
+.brand h1 span { color: var(--muted); font-weight: 400; }
+.stack { display: flex; gap: 0.4rem; overflow: hidden; margin-top: 0.3rem; }
+.badge { font-size: 0.74rem; color: var(--ink-2); border: 1px solid var(--border); border-radius: 6px; padding: 0.12rem 0.5rem; white-space: nowrap; }
+.hright { margin-left: auto; display: flex; align-items: center; gap: 1rem; flex: none; }
+.status {
+  display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.42rem 0.95rem 0.42rem 0.8rem;
+  border-radius: 999px; font-weight: 750; letter-spacing: 0.08em; font-size: 0.9rem; background: var(--surface-2); border: 1px solid var(--border);
+}
+.status .dot { width: 0.7rem; height: 0.7rem; background: var(--muted); }
+.status.running .dot { background: var(--good); animation: ping 2s ease-out infinite; }
+.status.idle .dot { background: var(--ink-2); }
+.status.error .dot { background: var(--bad); }
+.status.stale { opacity: 0.45; }
+.status.stale .dot { animation: none; background: var(--muted); }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(12,163,12,.55); } 80%,100% { box-shadow: 0 0 0 0.6rem rgba(12,163,12,0); } }
+.cyc { font-size: 0.95rem; color: var(--ink-2); white-space: nowrap; }
+.cyc b { color: var(--ink); font-size: 1.15rem; }
+.conn { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.conn .dot { width: 0.5rem; height: 0.5rem; background: var(--good); }
+.conn.bad .dot { background: var(--bad); }
+.conn.bad { color: var(--ink-2); }
+.clock { font-size: 0.95rem; color: var(--ink-2); }
+.ribbon {
+  position: fixed; top: 1.35rem; right: -3.4rem; transform: rotate(45deg); z-index: 50;
+  background: var(--warn); color: #0b0b0b; font-weight: 800; letter-spacing: 0.14em; font-size: 0.78rem;
+  padding: 0.3rem 3.8rem; box-shadow: 0 4px 18px rgba(0,0,0,.45); display: none; pointer-events: none;
+}
+.ribbon.on { display: block; }
+body.demo header { padding-right: 3.4rem; }
+.errbar {
+  position: fixed; left: 50%; top: 4.6rem; transform: translateX(-50%); z-index: 40; display: none;
+  background: #3a1514; border: 1px solid var(--bad); color: var(--ink); border-radius: 10px; padding: 0.5rem 1rem; font-size: 0.95rem;
+  max-width: 70vw; box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+.errbar.on { display: flex; gap: 0.6rem; align-items: center; }
+
+/* ---------- band: pipeline + thoughts ---------- */
+.band { display: grid; grid-template-columns: var(--cols); gap: var(--gap); height: 9.6rem; }
+.pipe { grid-column: 1 / 3; padding: 0.75rem 0.85rem; }
+.steps { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr 1.7fr 1.2fr 1fr; gap: 1.5rem; }
+.step {
+  position: relative; background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 0.6rem 0.75rem; min-width: 0; display: flex; flex-direction: column; gap: 0.3rem;
+  transition: border-color .5s, box-shadow .5s, opacity .5s, background .5s;
+  --c: var(--muted);
+}
+.step + .step::before {
+  content: ""; position: absolute; left: -1.2rem; top: 50%; width: 0.9rem; height: 0.9rem; transform: translateY(-50%);
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M3 1.5 6.5 5 3 8.5' fill='none' stroke='%23898781' stroke-width='1.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.step.idle { opacity: 0.5; }
+.step.active {
+  border-color: var(--c); background: color-mix(in srgb, var(--c) 11%, var(--surface-2));
+  animation: glow 2.6s ease-in-out infinite;
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent), 0 0 1.2rem -0.2rem color-mix(in srgb, var(--c) 45%, transparent); }
+  50% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent), 0 0 2.2rem 0.1rem color-mix(in srgb, var(--c) 55%, transparent); }
+}
+.srow { display: flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.sno { font-size: 0.72rem; color: var(--muted); font-weight: 700; }
+.stitle { font-size: 1.05rem; font-weight: 780; letter-spacing: 0.1em; text-transform: uppercase; }
+.sstate { margin-left: auto; font-size: 0.74rem; color: var(--muted); display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.step.active .sstate { color: var(--ink); font-weight: 600; }
+.sstate.stalled { color: var(--warn) !important; }
+.swhat { font-size: 0.84rem; color: var(--ink-2); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.step.active .swhat { color: var(--ink); }
+.swhat b.v { padding: 0.04rem 0.4rem; border-radius: 5px; font-weight: 800; letter-spacing: 0.05em; }
+.sfoot { display: flex; align-items: flex-end; gap: 0.5rem; margin-top: auto; min-width: 0; }
+.sms { margin-left: auto; font-size: 1.2rem; font-weight: 700; white-space: nowrap; line-height: 1; }
+.sms small { font-size: 0.7rem; color: var(--muted); font-weight: 500; }
+
+.thinking { padding: 0.75rem 1rem 0.65rem; }
+.thinking .ptitle { margin-bottom: 0.35rem; }
+.thoughts { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.28rem;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 1.6rem); mask-image: linear-gradient(to bottom, transparent 0, #000 1.6rem); }
+.th { display: grid; grid-template-columns: 1.15rem minmax(0, 1fr) auto; gap: 0.5rem; align-items: start; font-size: 0.8rem; color: var(--ink-2); opacity: 0.62; transition: opacity .6s, font-size .4s, color .6s; flex: none; }
+.th .tx { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.th .ag { font-size: 0.68rem; color: var(--muted); white-space: nowrap; padding-top: 0.1rem; }
+.th .ti { width: 1.05rem; height: 1.05rem; color: var(--muted); margin-top: 0.05rem; display: block; }
+.th .ti svg { width: 100%; height: 100%; display: block; }
+.th.k-warn .ti { color: var(--warn); } .th.k-done .ti { color: var(--good); }
+.th.newest { font-size: 0.98rem; color: var(--ink); opacity: 1; line-height: 1.35; animation: thin .45s ease; }
+.th.newest .tx { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.th.newest .ti { color: var(--ink-2); width: 1.2rem; height: 1.2rem; }
+.th.newest.k-warn .ti { color: var(--warn); } .th.newest.k-done .ti { color: var(--good); }
+.th.o2 { opacity: 0.5; } .th.o3 { opacity: 0.38; } .th.o4 { opacity: 0.28; } .th.o5 { opacity: 0.2; }
+.caret { display: inline-block; width: 0.5ch; height: 1em; background: var(--ink-2); vertical-align: -0.12em; margin-left: 1px; animation: blink .9s steps(1) infinite; }
+@keyframes thin { from { transform: translateY(0.5rem); opacity: 0; } }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------- main grid ---------- */
+main { display: grid; grid-template-columns: var(--cols); gap: var(--gap); min-height: 0; }
+.col { display: grid; gap: var(--gap); min-height: 0; min-width: 0; }
+.col.left { grid-template-rows: minmax(0, 1fr) minmax(0, 0.5fr); }
+.col.mid, .col.right { grid-template-rows: minmax(0, 1fr); }
+
+/* camera */
+.cam { flex: 1; min-height: 0; position: relative; border-radius: 10px; overflow: hidden; background: #000; }
+.cam img.main { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.cam img.ghost { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.16; filter: grayscale(0.5) blur(2px); }
+.pip {
+  position: absolute; right: 0.6rem; bottom: 0.6rem; width: 31%; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden;
+  border: 2px solid rgba(255,255,255,.85); box-shadow: 0 6px 22px rgba(0,0,0,.6); background: #000;
+}
+.pip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.camlabel {
+  position: absolute; left: 0.6rem; top: 0.6rem; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.08em; color: var(--ink);
+  background: rgba(13,13,13,.72); padding: 0.2rem 0.5rem; border-radius: 6px; text-transform: uppercase; display: flex; gap: .4rem; align-items: center;
+}
+.pip .camlabel { left: 0.35rem; top: 0.35rem; font-size: 0.66rem; }
+.rec { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--bad); animation: blink2 1.6s ease-in-out infinite; }
+@keyframes blink2 { 50% { opacity: .25; } }
+.standby { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: var(--muted); font-size: 0.95rem; z-index: 2; }
+.standby b { display: block; font-size: 1.2rem; color: var(--ink-2); font-weight: 600; margin-bottom: 0.25rem; }
+
+/* joints */
+.legend { display: flex; gap: 0.9rem; font-size: 0.74rem; color: var(--muted); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.legend i { display: inline-block; width: 1.3rem; height: 0; border-top: 2px solid var(--ink-2); vertical-align: middle; margin-right: 0.3rem; }
+.legend i.dash { border-top: 2px dashed var(--muted); }
+.joints { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 0.45rem 0.9rem; }
+.jc { min-height: 0; display: flex; flex-direction: column; }
+.jh { display: flex; justify-content: space-between; font-size: 0.74rem; color: var(--muted); }
+.jh b { color: var(--ink); font-weight: 600; }
+.jc svg { flex: 1; min-height: 0; width: 100%; }
+
+/* decision */
+.dtop { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1rem; align-items: center; }
+.verdict { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.vpill {
+  display: inline-flex; align-items: center; gap: 0.55rem; padding: 0.42rem 1.05rem 0.42rem 0.8rem; border-radius: 12px;
+  font-size: 2.15rem; font-weight: 850; letter-spacing: 0.05em; color: #fff; flex: none; background: var(--surface-3); transition: background .5s;
+}
+.vpill svg { width: 2.05rem; height: 2.05rem; }
+.vpill.good { background: var(--good); } .vpill.bad { background: var(--bad); } .vpill.warn { background: var(--warn); color: #0b0b0b; }
+.vmeta { min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.vmeta .l1 { font-size: 1.05rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vmeta .l2 { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vmeta .arrow { color: var(--muted); padding: 0 0.35rem; }
+.gwrap { grid-column: 1; min-width: 0; }
+.gauge { width: 100%; height: 4.5rem; display: block; margin-top: 0.35rem; }
+.gauge text { font-family: inherit; }
+.gcap { font-size: 0.74rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lensbox { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; width: 8.4rem; }
+.lens { position: relative; width: 7.4rem; height: 7.4rem; border-radius: 50%; overflow: hidden; background: #000;
+  box-shadow: 0 0 0 3px var(--lc, var(--axis)), 0 8px 26px rgba(0,0,0,.55); transition: box-shadow .6s; animation: lensin .6s ease; }
+@keyframes lensin { from { transform: scale(.85); opacity: 0; } }
+.lens img { position: absolute; }
+.lens .lring { position: absolute; border-radius: 50%; border: 2px dashed var(--lc, var(--warn)); transform: translate(-50%, -50%); }
+.lens.clear { background: color-mix(in srgb, var(--good) 14%, var(--surface-2)); display: grid; place-items: center; box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 55%, transparent); }
+.lens.clear svg { width: 3.2rem; height: 3.2rem; color: var(--good); }
+.lens.neutral { background: var(--surface-2); display: grid; place-items: center; box-shadow: 0 0 0 3px var(--axis); }
+.lens.neutral svg { width: 2.4rem; height: 2.4rem; color: var(--muted); }
+.lcap { font-size: 0.74rem; color: var(--ink-2); text-align: center; line-height: 1.25; }
+.lcap b { color: var(--ink); }
+/* views: the most unusual view big, the other two stacked beside it; tiles stay square so rings map 1:1 */
+.views { flex: 1; min-height: 0; margin-top: 0.6rem; container-type: size; display: flex; justify-content: center; align-items: center; gap: 0.75rem; }
+.view { position: relative; border-radius: 10px; overflow: hidden; background: #000; border: 2px solid var(--axis); transition: border-color .5s; flex: none; }
+.view.big { width: min(100cqh, (100cqw - 0.75rem) * 2 / 3); height: min(100cqh, (100cqw - 0.75rem) * 2 / 3); }
+.side { display: flex; flex-direction: column; gap: 0.75rem; flex: none; width: calc((min(100cqh, (100cqw - 0.75rem) * 2 / 3) - 0.75rem) / 2); }
+.side .view { width: 100%; aspect-ratio: 1; }
+.view img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.view img.heat { animation: heatfade 7s ease-in-out infinite; }
+@keyframes heatfade { 0%, 12% { opacity: 0; } 38%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.view svg.rings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.ring { fill: none; stroke-width: 2.5px; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1s ease-out forwards; }
+.ringpulse { fill: none; stroke-width: 2px; transform-box: fill-box; transform-origin: center; animation: pulse 2.6s ease-out infinite; opacity: 0; }
+.rlabs { position: absolute; inset: 0; pointer-events: none; }
+.ringhalo { fill: none; stroke: rgba(0,0,0,.55); stroke-width: 6px; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1s ease-out forwards; }
+.rlab { position: absolute; font-size: 0.8rem; font-weight: 800; white-space: nowrap; padding: 0.05rem 0.38rem; border-radius: 5px; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.5); animation: fadein .6s ease .5s both; }
+.rlab.w { color: #0b0b0b; }
+.side .rlab { font-size: 0.66rem; padding: 0 0.3rem; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes pulse { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.45); opacity: 0; } }
+.view.worst { border-color: var(--wc, var(--bad)); }
+.wtag { position: absolute; top: 0.45rem; right: 0.45rem; font-size: 0.66rem; font-weight: 800; letter-spacing: .08em; padding: 0.15rem 0.45rem; border-radius: 5px; color: #fff; display: none; }
+.view.worst .wtag { display: block; background: var(--wc, var(--bad)); }
+.view.worst.wwarn .wtag { color: #0b0b0b; }
+.okbadge { position: absolute; right: 0.45rem; top: 0.45rem; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(13,13,13,.75); color: var(--good); display: none; place-items: center; }
+.okbadge svg { width: 1rem; height: 1rem; }
+.view.clear .okbadge { display: grid; }
+.vlabel { position: absolute; left: 0.45rem; top: 0.45rem; font-size: 0.74rem; font-weight: 700; color: var(--ink); background: rgba(13,13,13,.75); padding: 0.12rem 0.45rem; border-radius: 5px; }
+.side .vlabel { font-size: 0.66rem; }
+.vfoot { position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 0.5rem; padding: 1.4rem 0.6rem 0.45rem; background: linear-gradient(to bottom, transparent, rgba(0,0,0,.82)); font-size: 0.95rem; }
+.side .vfoot { padding: 1rem 0.45rem 0.3rem; font-size: 0.76rem; gap: 0.35rem; }
+.vfoot b { font-weight: 750; min-width: 2.5rem; text-align: right; }
+.vtrack { flex: 1; position: relative; height: 0.9rem; }
+.vtrack .bd { position: absolute; top: 50%; height: 0.3rem; margin-top: -0.15rem; border-radius: 3px; }
+.vtrack .mk { position: absolute; top: 50%; width: 0.8rem; height: 0.8rem; margin: -0.4rem 0 0 -0.4rem; border-radius: 50%; border: 2px solid #000; transition: left .7s ease; }
+.side .vtrack .mk { width: 0.65rem; height: 0.65rem; margin: -0.325rem 0 0 -0.325rem; }
+.heatkey { display: flex; align-items: center; gap: 0.5rem; font-size: 0.74rem; color: var(--muted); margin-top: 0.45rem; white-space: nowrap; overflow: hidden; }
+.heatkey .bar { width: 5rem; height: 0.42rem; border-radius: 3px; background: linear-gradient(90deg, #1a1a19, #78141e, #dc4614, #faaa28, #fff5c8); flex: none; }
+.heatkey .rk { display: inline-block; width: 0.75rem; height: 0.75rem; border-radius: 50%; border: 2px solid var(--warn); flex: none; margin-left: 0.4rem; }
+.heatkey .rk.b { border-color: var(--bad); }
+
+/* efficiency */
+.eff { gap: 0.65rem; }
+.eff .ptitle { margin-bottom: 0; }
+.livepill { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; color: var(--ink-2); text-transform: none; letter-spacing: 0; font-weight: 500; }
+.livepill .dot { width: 0.45rem; height: 0.45rem; background: var(--good); }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 0.65rem; }
+.tile { background: var(--surface-2); border-radius: 11px; padding: 0.65rem 0.85rem; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
+.tl { font-size: 0.8rem; color: var(--ink-2); display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.tl svg { width: 1rem; height: 1rem; flex: none; color: var(--muted); }
+.tv { font-size: 2.3rem; font-weight: 720; letter-spacing: -0.02em; line-height: 1.1; white-space: nowrap; }
+.tv small { font-size: 1.05rem; font-weight: 600; color: var(--ink-2); margin-left: 0.2rem; letter-spacing: 0; }
+.tplain { font-size: 0.9rem; color: var(--ink); line-height: 1.3; }
+#effbody.off .tv, #effbody.off .thermo .big { color: var(--muted); }
+#effbody.off .tv small { display: none; }
+#effbody.off .tplain { color: var(--muted); }
+.tsub { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sparkw { position: relative; margin-top: 0.2rem; }
+.spark { width: 100%; height: 2.7rem; display: block; }
+.sparkw .ref { position: absolute; right: 0; font-size: 0.62rem; color: var(--muted); transform: translateY(-115%); pointer-events: none; }
+.thermo { background: var(--surface-2); border-radius: 11px; padding: 0.55rem 0.85rem; }
+.thermo .row1 { display: flex; align-items: baseline; gap: 0.6rem; white-space: nowrap; min-width: 0; }
+.thermo .big { font-size: 1.55rem; font-weight: 720; }
+.thermo .plain { font-size: 0.9rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.meter { position: relative; height: 0.65rem; border-radius: 999px; background: var(--surface-3); margin: 0.4rem 0 0.2rem; overflow: hidden; }
+.meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; transition: width .8s ease, background .8s; }
+.mscale { display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--muted); gap: 0.5rem; white-space: nowrap; }
+.where { display: flex; flex-direction: column; gap: 0.38rem; }
+.wh { font-size: 0.8rem; color: var(--ink-2); }
+.dev { display: grid; grid-template-columns: 5.2rem minmax(0, 1fr) 6.2rem; align-items: center; gap: 0.7rem; background: var(--surface-2); border-radius: 10px; padding: 0.4rem 0.7rem; }
+.dev .dn { display: flex; align-items: center; gap: 0.45rem; font-weight: 700; font-size: 0.95rem; }
+.dev .runs { font-size: 0.8rem; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dev .runs.none { color: var(--muted); }
+.dev .load { text-align: right; font-size: 0.86rem; font-weight: 650; white-space: nowrap; }
+.dev .load small { font-size: 0.68rem; color: var(--muted); font-weight: 500; margin-left: 0.25rem; }
+.mini { height: 0.3rem; border-radius: 999px; background: var(--surface-3); margin-top: 0.22rem; overflow: hidden; }
+.mini i { display: block; height: 100%; border-radius: 999px; transition: width .8s; }
+.speed { display: flex; flex-direction: column; gap: 0.42rem; min-height: 0; overflow: hidden; }
+.headline { font-size: 0.92rem; line-height: 1.3; }
+.headline b { font-weight: 720; }
+.bgroup { display: grid; grid-template-columns: 6.6rem minmax(0, 1fr); gap: 0.18rem 0.7rem; align-items: center; }
+.bgroup .gname { grid-row: span 3; font-size: 0.8rem; color: var(--ink-2); line-height: 1.2; }
+.bgroup .gname small { display: block; color: var(--muted); font-size: 0.68rem; }
+.brow { display: flex; align-items: center; gap: 0.45rem; min-width: 0; font-size: 0.76rem; }
+.brow .bl { width: 2.5rem; color: var(--muted); flex: none; }
+.brow .bt { flex: 1; min-width: 0; display: flex; align-items: center; gap: 0.4rem; }
+.brow .bb { height: 0.62rem; border-radius: 0 4px 4px 0; min-width: 3px; transition: width .8s; }
+.brow .bv { color: var(--ink); white-space: nowrap; font-weight: 600; }
+.brow .bv.err { color: var(--muted); font-weight: 400; font-style: italic; }
+.brow .inuse { font-size: 0.62rem; color: var(--ink-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 0.3rem; white-space: nowrap; }
+.foot { font-size: 0.68rem; color: var(--muted); margin-top: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- bottom ---------- */
+.bottom { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 2.2fr); gap: var(--gap); height: 7.4rem; }
+.counts { flex-direction: row; align-items: center; gap: 1.5rem; padding: 0.6rem 1.2rem; }
+.cnt { display: flex; flex-direction: column; min-width: 0; }
+.cnt .k { font-size: 0.78rem; color: var(--ink-2); display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.cnt .v { font-size: 2.5rem; font-weight: 750; line-height: 1.05; letter-spacing: -0.02em; }
+.cnt .s { font-size: 0.7rem; color: var(--muted); white-space: nowrap; }
+.cnt.hero .v { font-size: 3.2rem; }
+.vsep { width: 1px; align-self: stretch; background: var(--border); }
+.hist { padding: 0.55rem 0.9rem; }
+.hist .ptitle { margin-bottom: 0.4rem; }
+.hrow { flex: 1; min-height: 0; display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - (var(--hist-n) - 1) * 0.6rem) / var(--hist-n)); gap: 0.6rem; }
+.hb { min-width: 0; min-height: 0; background: var(--surface-2); border-radius: 9px; overflow: hidden; display: flex; flex-direction: column; border-top: 3px solid var(--muted); }
+.hb.enter { animation: slidein .6s ease; }
+@keyframes slidein { from { opacity: 0; transform: translateY(6px); } }
+.hb.good { border-top-color: var(--good); } .hb.bad { border-top-color: var(--bad); } .hb.warn { border-top-color: var(--warn); }
+.hb .tim { flex: 1; min-height: 0; position: relative; background: #000; }
+.hb .tim img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hb .ic { position: absolute; left: 0.3rem; top: 0.3rem; width: 1.25rem; height: 1.25rem; border-radius: 50%; display: grid; place-items: center; }
+.hb .ic svg { width: 0.85rem; height: 0.85rem; }
+.hb .cy { position: absolute; right: 0.3rem; top: 0.3rem; font-size: 0.66rem; color: var(--ink); background: rgba(13,13,13,.72); padding: 0.05rem 0.35rem; border-radius: 4px; }
+.hb .meta { display: flex; justify-content: space-between; font-size: 0.72rem; padding: 0.2rem 0.45rem; color: var(--ink-2); white-space: nowrap; gap: 0.3rem; }
+.hb.failed { opacity: 0.6; }
+.hempty { display: grid; place-items: center; color: var(--muted); font-size: 0.9rem; border: 1px dashed var(--axis); border-radius: 9px; grid-column: span var(--hist-n); }
+
+.fadein { animation: fadein .7s ease; }
+@keyframes fadein { from { opacity: 0.25; } }
+
+@media (max-height: 820px) {
+  :root { --hist-n: 7; }
+  .heatkey { display: none; }
+  .spark { height: 2.2rem; }
+}
+@media (max-aspect-ratio: 16/10) { :root { --hist-n: 6; } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .vimg img.heat { opacity: 1; }
+  .ring { stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+<div class="ribbon" id="ribbon">DEMO DATA</div>
+<div class="errbar" id="errbar"><svg width="18" height="18" viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#d03b3b"/><path d="M10 5v6M10 14v.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg><span id="errtext"></span></div>
+
+<header>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+      <rect x="4" y="13" width="32" height="22" rx="4" fill="#2a2a28" stroke="#c3c2b7" stroke-width="1.5"/>
+      <rect x="9" y="6.5" width="8" height="7" rx="2" fill="#2a2a28" stroke="#c3c2b7" stroke-width="1.5"/>
+      <rect x="23" y="6.5" width="8" height="7" rx="2" fill="#2a2a28" stroke="#c3c2b7" stroke-width="1.5"/>
+      <path d="M13 24.5l4.2 4.2L27.5 18.5" fill="none" stroke="#0ca30c" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1>CheckurAI <span>— autonomous inspection cell</span></h1>
+      <div class="stack">
+        <span class="badge">Intel Core Ultra X9 388H</span><span class="badge">OpenVINO</span><span class="badge">Anomalib</span><span class="badge">Physical AI Studio</span><span class="badge">SO-101 arm</span>
+      </div>
+    </div>
+  </div>
+  <div class="hright">
+    <div class="cyc" id="cyc"></div>
+    <div class="status" id="status"><span class="dot"></span><span id="statustext">CONNECTING</span></div>
+    <div class="conn bad" id="conn"><span class="dot"></span><span id="conntext">no data</span></div>
+    <div class="clock num" id="clock"></div>
+  </div>
+</header>
+
+<section class="band">
+  <div class="panel pipe"><div class="steps" id="steps"></div></div>
+  <div class="panel thinking">
+    <div class="ptitle">Robot's thoughts <span class="sub">from its own sensors and decisions</span></div>
+    <div class="thoughts" id="thoughts"></div>
+  </div>
+</section>
+
+<main>
+  <div class="col left">
+    <section class="panel">
+      <div class="ptitle">Robot's view <span class="sub" id="camsub">top camera · wrist camera inset</span></div>
+      <div class="cam" id="cam">
+        <img class="ghost" id="camghost" alt="">
+        <img class="main" id="camtop" alt="">
+        <div class="camlabel" id="camlab"><span class="rec"></span>Top camera</div>
+        <div class="pip" id="pip"><img id="camwrist" alt=""><div class="camlabel">Wrist</div></div>
+        <div class="standby" id="camwait"><div><b>Cell on standby</b>the live camera starts with the next brick</div></div>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="ptitle">Intention vs reality <span class="sub">arm joints · last 15 s</span><span class="right legend"><span><i></i>where it is</span><span><i class="dash"></i>where the AI wants it</span></span></div>
+      <div class="joints" id="joints"></div>
+    </section>
+  </div>
+
+  <div class="col mid">
+    <section class="panel" id="decision">
+      <div class="ptitle">Last decision <span class="sub" id="dsub"></span></div>
+      <div id="dbody" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
+    </section>
+  </div>
+
+  <div class="col right">
+    <section class="panel eff" id="eff">
+      <div class="ptitle">Efficiency <span class="right livepill" id="efflive"><span class="dot"></span>measured live on this laptop</span></div>
+      <div id="effbody" style="flex:1;min-height:0;display:flex;flex-direction:column;gap:.62rem"></div>
+    </section>
+  </div>
+</main>
+
+<section class="bottom">
+  <div class="panel counts" id="counts"></div>
+  <div class="panel hist">
+    <div class="ptitle">Recent bricks <span class="sub" id="histsub"></span></div>
+    <div class="hrow" id="hrow"></div>
+  </div>
+</section>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const DEV = { GPU: { name: "iGPU" }, NPU: { name: "NPU" }, CPU: { name: "CPU" } };
+const DEV_ORDER = ["GPU", "NPU", "CPU"];
+const STAGE_STEP = { spot_check: "perceive", pick: "act", inspect: "detect", reason: "reason", place_good: "act", place_bad: "act", home: "act" };
+const MOTION_WORD = { start: "starting", moving: "moving", settling: "settling", done: "done", stalled: "stalled" };
+const JOINT_LABEL = { shoulder_pan: "Base", shoulder_lift: "Shoulder", elbow_flex: "Elbow", wrist_flex: "Wrist flex", wrist_roll: "Wrist roll", gripper: "Gripper" };
+const VIEW_LABEL = { direct: "Front", left: "Left mirror", right: "Right mirror" };
+const PHONE_WH = 15, BULB_W = 60, FRAME_MS = 1000 / 30;
+const ICON = {
+  ok: '<svg viewBox="0 0 20 20"><path d="M4.5 10.5l3.6 3.6 7.4-8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  x: '<svg viewBox="0 0 20 20"><path d="M5.5 5.5l9 9M14.5 5.5l-9 9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  q: '<svg viewBox="0 0 20 20"><path d="M7.2 7.4a2.9 2.9 0 1 1 3.8 2.8c-.7.3-1 .8-1 1.5v.6M10 15.2v.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  bolt: '<svg viewBox="0 0 20 20"><path d="M11 2 4 11h5l-1 7 7-9h-5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  plug: '<svg viewBox="0 0 20 20"><path d="M7 2v4M13 2v4M5 6h10v3a5 5 0 0 1-10 0zM10 14v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  temp: '<svg viewBox="0 0 20 20"><path d="M8 3a2 2 0 0 1 4 0v8.3a4 4 0 1 1-4 0z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  dots: '<svg viewBox="0 0 20 20"><circle cx="5" cy="10" r="1.6" fill="currentColor"/><circle cx="10" cy="10" r="1.6" fill="currentColor"/><circle cx="15" cy="10" r="1.6" fill="currentColor"/></svg>',
+  look: '<svg viewBox="0 0 20 20"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="10" cy="10" r="2.6" fill="currentColor"/></svg>',
+  decide: '<svg viewBox="0 0 20 20"><path d="M10 3v14M4 6h12M4 6l-2.4 5.5h4.8zM16 6l-2.4 5.5h4.8zM7 17h6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  act: '<svg viewBox="0 0 20 20"><path d="M3 17h6M6 17v-4l5-5 4 2M11 8l2-4M15 10l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="13" r="1.4" fill="currentColor"/><circle cx="11" cy="8" r="1.4" fill="currentColor"/></svg>',
+  warn: '<svg viewBox="0 0 20 20"><path d="M10 2.8 18 16.6H2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10 8v4M10 14.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  done: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.2 10.3l2.6 2.6 5-5.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  info: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9v5M10 6.2v.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  clear: '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="3" opacity=".45"/><path d="M14.5 24.5l6.5 6.5 12.5-13.5" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const isNum = (v) => typeof v === "number" && isFinite(v);
+const f = (v, nd = 1) => (isNum(v) ? v.toFixed(nd) : "–");
+const fms = (v) => (!isNum(v) ? "–" : v < 10 ? v.toFixed(1) : Math.round(v).toString());
+const devName = (d) => (DEV[d] ? DEV[d].name : d || "?");
+const devChip = (d) => (d ? `<span class="chip"><span class="dot d-${esc(d)}"></span>${esc(devName(d))}</span>` : "");
+const COLOR = { good: "var(--good)", warn: "var(--warn)", bad: "var(--bad)" };
+
+function verdictClass(v, unc) { return v === "good" ? "good" : v === "defect" ? (unc ? "warn" : "bad") : ""; }
+function verdictWord(v, unc) { return v === "good" ? "GOOD" : v === "defect" ? (unc ? "UNSURE" : "DEFECT") : v === "empty" ? "EMPTY" : "—"; }
+function bandOf(score, low, high) {
+  if (!isNum(score) || !isNum(low)) return "";
+  if (score < low) return "good";
+  if (isNum(high) && score < high) return "warn";
+  return "bad";
+}
+
+/* ---------- number tween ---------- */
+function tween(el, v, fmt, dur = 650) {
+  if (!el) return;
+  if (!isNum(v)) { el.textContent = "–"; el._v = null; return; }
+  const from = isNum(el._v) ? el._v : v;
+  el._v = v;
+  cancelAnimationFrame(el._raf);
+  if (from === v) { el.textContent = fmt(v); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(from + (v - from) * e);
+    if (k < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
+/* ---------- images: preload, then swap only when the URL changes ---------- */
+function swapImg(img, url) {
+  if (!img) return;
+  if (!url) { img.dataset.want = ""; img.removeAttribute("src"); img.style.visibility = "hidden"; return; }
+  if (img.dataset.want === url) return;
+  img.dataset.want = url;
+  const pre = new Image();
+  pre.onload = () => { if (img.dataset.want === url) { img.src = url; img.style.visibility = "visible"; } };
+  pre.src = url;
+}
+
+/* ---------- state + timing ---------- */
+let S = null, offset = 0, lastNow = null, lastAdvance = 0, fetchOk = false, failSince = 0, fetchAt = 0;
+const serverNow = () => Date.now() / 1000 + offset;
+
+async function poll() {
+  try {
+    const r = await fetch("/api/state", { cache: "no-store" });
+    if (!r.ok) throw new Error(r.status);
+    const s = await r.json();
+    fetchOk = true; failSince = 0; fetchAt = performance.now();
+    if (isNum(s.now)) {
+      offset = s.now - Date.now() / 1000;
+      if (s.now !== lastNow) { lastNow = s.now; lastAdvance = performance.now(); }
+    } else lastAdvance = performance.now();
+    S = s;
+    render(s);
+  } catch (e) {
+    fetchOk = false;
+    if (!failSince) failSince = performance.now();
+  } finally {
+    setTimeout(poll, 500);
+  }
+}
+function safe(name, fn) { try { fn(); } catch (e) { console.error("render " + name, e); } }
+function render(s) {
+  $("#ribbon").classList.toggle("on", !!s.demo);
+  document.body.classList.toggle("demo", !!s.demo);
+  safe("header", () => renderHeader(s));
+  safe("pipeline", () => renderPipeline(s));
+  safe("thoughts", () => renderThoughts(s.thoughts, s.cell));
+  safe("camera", () => renderCamera(s.camera, s.inspection, s.cell));
+  safe("joints", () => renderJoints(s.joints));
+  safe("decision", () => renderDecision(s.inspection));
+  safe("efficiency", () => renderEff(s.power, s.bench, s.pipeline, s.config));
+  safe("counts", () => renderCounts(s.cell));
+  safe("history", () => renderHistory(s.history));
+}
+
+/* ---------- header ---------- */
+function renderHeader(s) {
+  const c = s.cell || {};
+  const st = c.status || "idle";
+  $("#status").className = "status " + st;
+  $("#statustext").textContent = { running: "SORTING", idle: "STANDBY", stopped: "STOPPED", error: "ERROR" }[st] || String(st).toUpperCase();
+  $("#cyc").innerHTML = isNum(c.cycle) ? `brick <b class="num">#${c.cycle}</b>` : "";
+  if (c.error) { $("#errtext").textContent = c.error; $("#errbar").classList.add("on"); } else $("#errbar").classList.remove("on");
+}
+function stageElapsed(c) {
+  if (!c) return null;
+  if (isNum(c.stage_started)) return Math.max(0, serverNow() - c.stage_started);
+  if (isNum(c.stage_elapsed)) return c.stage_elapsed + (performance.now() - fetchAt) / 1000;
+  return null;
+}
+function tick() {
+  $("#clock").textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const conn = $("#conn"), stale = (performance.now() - lastAdvance) / 1000;
+  if (!fetchOk) {
+    conn.className = "conn bad";
+    $("#conntext").textContent = failSince ? `no connection · ${Math.round((performance.now() - failSince) / 1000)} s` : "no connection";
+  } else if (stale > 3) {
+    conn.className = "conn bad"; $("#conntext").textContent = `data ${Math.round(stale)} s old`;
+  } else {
+    conn.className = "conn"; $("#conntext").textContent = "live";
+  }
+  $("#status").classList.toggle("stale", !fetchOk || stale > 3); // don't claim SORTING on old data
+  // live status next to the active pipeline step: "moving · 6.2 s"
+  const act = $("#steps .step.active .sstate");
+  if (act && S && S.cell && S.cell.status === "running") {
+    const el = stageElapsed(S.cell);
+    const m = S.cell.motion;
+    const word = MOTION_WORD[m] || "now";
+    act.classList.toggle("stalled", m === "stalled");
+    act.innerHTML = `<span class="dot" style="width:.45rem;height:.45rem;background:${m === "stalled" ? "var(--warn)" : "var(--c)"}"></span>${word}${isNum(el) ? ` · ${el.toFixed(1)} s` : ""}`;
+  }
+  if (S) updateAges();
+}
+setInterval(tick, 200);
+
+/* ---------- pipeline ---------- */
+const PIPE_DEFAULT = [
+  { key: "perceive", title: "Perceive", what: "Cameras look for a brick" }, { key: "detect", title: "Detect", what: "Anomaly model checks 3 sides" },
+  { key: "reason", title: "Reason", what: "Good, defect, or not sure?" }, { key: "act", title: "Act", what: "Learned policy moves the arm" },
+  { key: "optimize", title: "Optimize", what: "OpenVINO, compiled for this laptop" },
+];
+function renderPipeline(s) {
+  const steps = $("#steps");
+  const c = s.cell || {};
+  let P = Array.isArray(s.pipeline) && s.pipeline.length ? s.pipeline : PIPE_DEFAULT.map((x) => ({ ...x, state: "idle" }));
+  if (!P.some((p) => p.state === "active") && c.stage && STAGE_STEP[c.stage] && c.status === "running") {
+    P = P.map((p) => ({ ...p, state: p.key === STAGE_STEP[c.stage] ? "active" : p.state }));
+  }
+  if (steps.children.length !== P.length) {
+    steps.innerHTML = P.map((p, i) => `
+      <div class="step idle">
+        <div class="srow"><span class="sno">${i + 1}</span><span class="stitle"></span><span class="sstate"></span></div>
+        <div class="swhat"></div>
+        <div class="sfoot"><span class="sdev"></span><span class="sms num"></span></div>
+      </div>`).join("");
+  }
+  P.forEach((p, i) => {
+    const el = steps.children[i];
+    let state = p.state || "idle";
+    if (p.key === "optimize" && state === "idle") state = "done"; // always in effect: every model runs through OpenVINO
+    el.className = "step " + state;
+    el.style.setProperty("--c", p.device && DEV[p.device] ? `var(--${p.device.toLowerCase()})` : "var(--ink-2)");
+    $(".stitle", el).textContent = p.title || p.key;
+    const ss = $(".sstate", el);
+    if (state !== "active") { ss.className = "sstate"; ss.textContent = state === "done" ? (p.key === "optimize" ? "always on" : "done") : ""; }
+    const what = $(".swhat", el);
+    const html = p.key === "reason" && p.text ? reasonHtml(p.text) : esc(p.text && state === "active" ? p.text : p.what || p.text || "");
+    if (what._h !== html) { what.innerHTML = html; what._h = html; }
+    const dh = devChip(p.device), devEl = $(".sdev", el);
+    if (devEl.innerHTML !== dh) devEl.innerHTML = dh;
+    const unit = p.key === "act" ? " ms/plan" : p.key === "detect" ? " ms/frame" : " ms";
+    $(".sms", el).innerHTML = isNum(p.ms) ? `${fms(p.ms)}<small>${unit}${p.ms_source === "benchmark" ? " · bench" : ""}</small>` : "";
+  });
+}
+function reasonHtml(t) {
+  const m = String(t).match(/^(GOOD|DEFECT|UNCERTAIN|UNSURE|EMPTY)\b(.*)$/i);
+  if (!m) return esc(t);
+  const w = m[1].toUpperCase();
+  const cls = w === "GOOD" ? "s-good" : w === "DEFECT" ? "s-bad" : w === "EMPTY" ? "" : "s-warn";
+  return `<b class="v ${cls}" style="color:${cls === "s-warn" ? "#0b0b0b" : "#fff"}">${esc(w)}</b>${esc(m[2]).replace(/→/g, '<span class="muted">→</span>')}`;
+}
+
+/* ---------- robot's thoughts ---------- */
+const THOUGHT_MAX = 6;
+let typing = null;
+function renderThoughts(T, c) {
+  const box = $("#thoughts");
+  let list = Array.isArray(T) ? T.filter((x) => x && x.text) : [];
+  if (!list.length) {
+    const msg = c && c.message ? c.message : !c || c.status !== "running" ? "Standing by — waiting for the next brick." : "Starting up…";
+    list = [{ t: null, kind: "info", text: msg, _synthetic: true }];
+  }
+  list = list.slice(-THOUGHT_MAX);
+  const key = (x) => `${x.t}|${x.text}`;
+  const want = list.map(key).join("\n");
+  if (box._sig === want) return;
+  box._sig = want;
+  if (typing) typing.finish(); // never leave a half-typed line behind
+  const existing = new Map([...box.children].map((n) => [n.dataset.k, n]));
+  const nodes = list.map((x) => {
+    let n = existing.get(key(x));
+    if (!n) {
+      n = document.createElement("div");
+      n.dataset.k = key(x);
+      n.innerHTML = `<span class="ti">${ICON[x.kind] || ICON.info}</span><span class="tx"></span><span class="ag num"></span>`;
+      n._text = x.text; n._new = true;
+    }
+    n._kind = x.kind || "info"; n._t = x.t;
+    return n;
+  });
+  box.replaceChildren(...nodes);
+  const L = nodes.length, firstRender = !box._seen;
+  box._seen = true;
+  nodes.forEach((n, i) => {
+    const age = L - 1 - i;
+    n.className = `th k-${n._kind}` + (age === 0 ? " newest" : ` o${Math.min(age, 5)}`);
+    if (n._new) {
+      n._new = false;
+      if (age === 0 && !firstRender && !list[i]._synthetic) typeInto($(".tx", n), n._text);
+      else $(".tx", n).textContent = n._text;
+    }
+  });
+  updateAges();
+}
+function typeInto(el, text) {
+  let done = false;
+  const cps = Math.max(70, text.length / 1.4); // fast: the whole line within ~1.4 s
+  const t0 = performance.now();
+  const finish = () => { if (done) return; done = true; el.textContent = text; if (typing && typing.el === el) typing = null; };
+  const step = (t) => {
+    if (done) return;
+    const i = Math.min(text.length, Math.floor(((t - t0) / 1000) * cps));
+    el.innerHTML = esc(text.slice(0, i)) + '<span class="caret"></span>';
+    if (i >= text.length) finish(); else requestAnimationFrame(step);
+  };
+  typing = { el, finish };
+  requestAnimationFrame(step);
+}
+function updateAges() {
+  const now = serverNow();
+  [...$("#thoughts").children].forEach((n) => {
+    const ag = $(".ag", n);
+    if (!ag) return;
+    if (!isNum(n._t)) { ag.textContent = ""; return; }
+    const d = Math.max(0, now - n._t);
+    const txt = d < 5 ? "now" : d < 60 ? `${Math.round(d)} s` : d < 3600 ? `${Math.round(d / 60)} min` : "";
+    if (ag.textContent !== txt) ag.textContent = txt;
+  });
+}
+
+/* ---------- camera ---------- */
+function renderCamera(c, I, cell) {
+  const has = !!(c && (c.top || c.wrist));
+  $("#camwait").style.display = has ? "none" : "grid";
+  $("#camtop").style.display = has ? "" : "none";
+  $("#camlab").style.display = has ? "" : "none";
+  swapImg($("#camtop"), c && c.top);
+  swapImg($("#camwrist"), c && c.wrist);
+  $("#pip").style.display = c && c.wrist ? "block" : "none";
+  swapImg($("#camghost"), !has && I && I.views && I.views[0] ? I.views[0].img : null);
+  $("#camsub").textContent = c && isNum(c.age_s) && c.age_s > 2 ? `frame ${c.age_s.toFixed(0)} s old` : has ? "top camera · wrist camera inset" : "";
+}
+
+/* ---------- joints: intention (commanded) vs reality (measured) ---------- */
+function renderJoints(j) {
+  const box = $("#joints");
+  if (!j || !Array.isArray(j.t) || j.t.length < 2 || !Array.isArray(j.state) || !j.state.length) {
+    if (!box.querySelector(".waiting")) box.innerHTML = '<div class="waiting" style="grid-column:1/-1;grid-row:1/-1">the traces appear while the arm moves: what the AI asks for, and where the arm really is</div>';
+    return;
+  }
+  const names = j.names && j.names.length ? j.names : ["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"];
+  if (box.querySelector(".waiting") || box.children.length !== names.length) {
+    box.innerHTML = names.map((n) => `
+      <div class="jc"><div class="jh"><span>${esc(JOINT_LABEL[n] || n)}</span><b class="num"></b></div>
+      <svg viewBox="0 0 200 60" preserveAspectRatio="none">
+        <line x1="0" y1="59.5" x2="200" y2="59.5" stroke="var(--grid)" stroke-width="1" vector-effect="non-scaling-stroke"/>
+        <polyline class="act" fill="none" stroke="var(--muted)" stroke-width="2" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+        <polyline class="st" fill="none" stroke="var(--ink-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+      </svg></div>`).join("");
+  }
+  const t = j.t, t1 = t[t.length - 1], t0 = Math.min(t[0], t1 - 15);
+  names.forEach((n, k) => {
+    const el = box.children[k];
+    const sv = j.state.map((r) => (r ? r[k] : null));
+    const av = Array.isArray(j.action) ? j.action.map((r) => (r ? r[k] : null)) : [];
+    const all = sv.concat(av).filter(isNum);
+    if (!all.length) return;
+    let lo = Math.min(...all), hi = Math.max(...all);
+    const span = Math.max(hi - lo, 8), mid = (hi + lo) / 2;
+    lo = mid - span * 0.62; hi = mid + span * 0.62;
+    const pts = (vals) => vals.map((v, i) => (isNum(v) && isNum(t[i]) ? `${(((t[i] - t0) / (t1 - t0 || 1)) * 200).toFixed(1)},${(58 - ((v - lo) / (hi - lo)) * 56).toFixed(1)}` : null)).filter(Boolean).join(" ");
+    el.querySelector("polyline.st").setAttribute("points", pts(sv));
+    el.querySelector("polyline.act").setAttribute("points", pts(av));
+    const last = sv.filter(isNum).pop();
+    el.querySelector(".jh b").textContent = isNum(last) ? (n === "gripper" ? `${Math.round(last)} % open` : `${last.toFixed(0)}`) : "";
+  });
+}
+
+/* ---------- decision ---------- */
+let lastInspKey = null;
+function renderDecision(I) {
+  const body = $("#dbody");
+  if (!I || !I.verdict) {
+    if (!body.querySelector(".waiting")) body.innerHTML = '<div class="waiting"><div>waiting for the first inspection…<br><span style="font-size:.8rem">the anomaly model looks at each brick from 3 sides and decides: good or defect</span></div></div>';
+    $("#dsub").textContent = "";
+    return;
+  }
+  if (!body.querySelector(".dtop")) {
+    body.innerHTML = `
+      <div class="dtop">
+        <div class="verdict"><div class="vpill" id="vpill"></div><div class="vmeta"><div class="l1" id="vl1"></div><div class="l2" id="vl2"></div><div class="l2" id="vl3"></div></div></div>
+        <div class="lensbox" id="lensbox"></div>
+        <div class="gwrap"><svg class="gauge" id="gauge" viewBox="0 0 600 76" preserveAspectRatio="xMidYMid meet"></svg>
+          <div class="gcap">0 = a typical good brick · 1.0 = the most unusual good brick seen in training</div></div>
+      </div>
+      <div class="views" id="views"></div>
+      <div class="heatkey"><span class="bar"></span><span>glow = how unlike a good brick each spot looks</span><span class="rk"></span><span>unusual spot</span><span class="rk b"></span><span>defect-level spot</span></div>`;
+  }
+  const key = `${I.cycle}|${I.t}|${I.verdict}|${I.score}`;
+  const vc = verdictClass(I.verdict, I.uncertain);
+  const pill = $("#vpill");
+  pill.className = "vpill " + vc;
+  const icon = I.verdict === "good" ? ICON.ok : I.verdict === "defect" ? (I.uncertain ? ICON.q : ICON.x) : ICON.dots;
+  pill.innerHTML = icon + `<span>${verdictWord(I.verdict, I.uncertain)}</span>`;
+  const bowl = I.task || (I.verdict === "good" ? "good bowl" : I.verdict === "defect" ? "defect bowl" : "");
+  $("#vl1").innerHTML = bowl ? `<span class="arrow" style="padding-left:0">→</span>into the <b>${esc(bowl.replace(/^the /, ""))}</b>${I.uncertain ? '<span class="muted">, to be safe</span>' : ""}` : "";
+  $("#vl3").innerHTML = I.policy ? `<span class="muted">carried by the learned skill</span> <span class="chip">${esc(I.policy)}</span>` : "";
+  const bits = [];
+  if (isNum(I.frames)) bits.push(`${I.frames} frames × ${(I.views || []).length || 3} views`);
+  if (isNum(I.infer_ms)) bits.push(`${fms(I.infer_ms)} ms/frame${I.device ? ` on the ${devName(I.device)}` : ""}`);
+  else if (I.device) bits.push(`on the ${devName(I.device)}`);
+  $("#vl2").textContent = bits.join(" · ");
+  $("#dsub").textContent = isNum(I.cycle) ? `brick #${I.cycle}` : "";
+  drawGauge(I);
+  drawViews(I);
+  drawLens(I);
+  if (key !== lastInspKey) {
+    lastInspKey = key;
+    [pill, $("#gauge")].forEach((el) => { el.classList.remove("fadein"); void el.getBoundingClientRect(); el.classList.add("fadein"); });
+  }
+}
+function domainFor(I) {
+  // decision scale: 0 = typical good brick, low (1.0) = most unusual good brick seen in calibration, >= high = defect; can be negative
+  const vals = [I.score, ...(I.views || []).map((v) => v.score)].filter(isNum);
+  const high = isNum(I.high) ? I.high : isNum(I.low) ? I.low * 1.8 : 1.8;
+  return [Math.min(-1, ...vals.map((v) => v - 0.1)), Math.max(high * 1.4, ...vals.map((v) => v + 0.15))];
+}
+function scaleSegs(I, lo, hi) {
+  const low = isNum(I.low) ? I.low : null, high = isNum(I.high) ? I.high : low;
+  if (low == null) return [];
+  const segs = [["good", lo, low, "good"]];
+  if (high > low) segs.push(["warn", low, high, "unsure"]);
+  segs.push(["bad", high, hi, "defect"]);
+  return segs;
+}
+function drawGauge(I) {
+  const g = $("#gauge");
+  const [lo, hi] = domainFor(I);
+  const W = 600, x0 = 10, x1 = W - 10, y = 28, h = 14;
+  const X = (v) => x0 + ((Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)) * (x1 - x0);
+  const band = bandOf(I.score, I.low, I.high);
+  const segs = scaleSegs(I, lo, hi);
+  let out = "";
+  segs.forEach(([cls, a, b, label], i) => {
+    const xa = X(a) + (i ? 1 : 0), xb = X(b) - (i < segs.length - 1 ? 1 : 0); // 2px surface gap between bands
+    const active = cls === band;
+    out += `<rect x="${xa.toFixed(1)}" y="${y}" width="${Math.max(0, xb - xa).toFixed(1)}" height="${h}" rx="4" fill="${COLOR[cls]}" opacity="${active ? 1 : 0.22}"/>`;
+    out += `<text x="${((xa + xb) / 2).toFixed(1)}" y="${y + h + 18}" text-anchor="middle" font-size="13.5" fill="${active ? "var(--ink)" : "var(--muted)"}" font-weight="${active ? 700 : 400}">${label}</text>`;
+  });
+  const t2 = (v) => (isNum(v) ? v.toFixed(2).replace(/0$/, "") : "–"); // 1.0, 1.86
+  [[0, "0"], [I.low, t2(I.low)], [I.high, t2(I.high)]].filter(([v]) => isNum(v) && v > lo && v < hi).forEach(([v, t]) => {
+    out += `<line x1="${X(v).toFixed(1)}" y1="${y + h + 1}" x2="${X(v).toFixed(1)}" y2="${y + h + 5}" stroke="var(--muted)" stroke-width="1"/>`;
+    out += `<text x="${X(v).toFixed(1)}" y="${y + h + 31}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${t}</text>`;
+  });
+  if (isNum(I.score)) {
+    const xs = X(I.score);
+    const anchor = xs < 70 ? "start" : xs > W - 70 ? "end" : "middle";
+    const dx = anchor === "start" ? -6 : anchor === "end" ? 6 : 0;
+    out += `<g transform="translate(${xs.toFixed(1)},0)">
+      <line x1="0" y1="${y - 4}" x2="0" y2="${y + h + 4}" stroke="var(--ink)" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="0" cy="${y + h / 2}" r="6.5" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>
+      <text x="${dx}" y="${y - 9}" text-anchor="${anchor}" font-size="15" font-weight="800" fill="var(--ink)">this brick: ${f(I.score, 2)}</text></g>`;
+  }
+  if (g._h !== out) { g.innerHTML = out; g._h = out; }
+}
+function regionColor(peak, I) { return isNum(I.high) && isNum(peak) && peak >= I.high ? "var(--bad)" : "var(--warn)"; }
+const VIEW_HTML = `<img class="plain" alt=""><img class="heat" alt="">
+  <svg class="rings" viewBox="0 0 100 100" preserveAspectRatio="none"></svg><div class="rlabs"></div>
+  <span class="vlabel"></span><span class="wtag">MOST UNUSUAL</span><span class="okbadge">${ICON.ok}</span>
+  <div class="vfoot"><div class="vtrack"></div><b class="num"></b></div>`;
+function drawViews(I) {
+  const box = $("#views");
+  const all = I.views || [];
+  if (!all.length) { if (!box.querySelector(".waiting")) box.innerHTML = '<div class="waiting">no view images</div>'; box._n = 0; return; }
+  // the most unusual view goes in the big tile, the others keep their order beside it
+  const wi = Math.max(0, all.findIndex((v) => v.name === I.worst_view));
+  const V = [all[wi], ...all.filter((_, i) => i !== wi)];
+  if (box._n !== V.length) {
+    box._n = V.length;
+    box.innerHTML = `<div class="view big">${VIEW_HTML}</div>` + (V.length > 1 ? `<div class="side">${V.slice(1).map(() => `<div class="view">${VIEW_HTML}</div>`).join("")}</div>` : "");
+  }
+  const slots = box.querySelectorAll(".view");
+  const [lo, hi] = domainFor(I);
+  const X = (v) => 4 + ((Math.min(Math.max(v, lo), hi) - lo) / (hi - lo)) * 92; // percent
+  const segs = scaleSegs(I, lo, hi);
+  V.forEach((v, i) => {
+    const el = slots[i];
+    swapImg($("img.plain", el), v.img);
+    swapImg($("img.heat", el), v.heat);
+    $("img.heat", el).style.display = v.heat ? "" : "none";
+    $(".vlabel", el).textContent = v.label || VIEW_LABEL[v.name] || v.name;
+    const b = bandOf(v.score, I.low, I.high);
+    const R = Array.isArray(v.regions) ? v.regions.filter((r) => r && isNum(r.x) && isNum(r.y) && isNum(r.r)).slice(0, 3) : [];
+    const worst = !!I.worst_view && I.worst_view === v.name && I.verdict !== "good";
+    el.classList.toggle("worst", worst);
+    el.classList.toggle("wwarn", worst && b === "warn");
+    el.classList.toggle("clear", !R.length && b === "good");
+    el.style.setProperty("--wc", COLOR[b] || "var(--bad)");
+    // defect rings (normalised centre/radius on the square view image), strongest first
+    const rsig = `${v.img}|` + R.map((r) => `${r.x},${r.y},${r.r},${r.peak}`).join(";");
+    const svg = $("svg.rings", el);
+    if (svg._sig !== rsig) {
+      svg._sig = rsig;
+      let labs = "";
+      svg.innerHTML = R.map((r, k) => {
+        const cx = r.x * 100, cy = r.y * 100, rr = Math.max(4, r.r * 100), col = regionColor(r.peak, I);
+        const right = cx + rr > 78; // label on the side with room
+        const lx = right ? cx - rr * 0.78 : cx + rr * 0.78, ly = cy - rr * 0.78;
+        if (isNum(r.peak)) labs += `<span class="rlab${col === COLOR.warn ? " w" : ""}" style="left:${lx.toFixed(1)}%;top:${Math.max(11, ly).toFixed(1)}%;background:${col};transform:translate(${right ? "-100%" : "0"},-100%)">${f(r.peak, 2)}</span>`;
+        return `<circle class="ringpulse" cx="${cx}" cy="${cy}" r="${rr}" stroke="${col}" vector-effect="non-scaling-stroke" style="animation-delay:${1 + k * 0.3}s"/>
+          <circle class="ringhalo" pathLength="100" cx="${cx}" cy="${cy}" r="${rr}" vector-effect="non-scaling-stroke" transform="rotate(-90 ${cx} ${cy})" style="animation-delay:${k * 0.25}s"/>
+          <circle class="ring" pathLength="100" cx="${cx}" cy="${cy}" r="${rr}" stroke="${col}" vector-effect="non-scaling-stroke" transform="rotate(-90 ${cx} ${cy})" style="animation-delay:${k * 0.25}s"/>`;
+      }).join("");
+      $(".rlabs", el).innerHTML = labs;
+    }
+    const tr = $(".vtrack", el);
+    let s = segs.length
+      ? segs.map(([cls, a, z]) => `<span class="bd" style="left:calc(${X(a).toFixed(2)}% + 1px);width:calc(${(X(z) - X(a)).toFixed(2)}% - 2px);background:${COLOR[cls]};opacity:${cls === b ? 0.6 : 0.2}"></span>`).join("")
+      : `<span class="bd" style="left:0;width:100%;background:var(--surface-3)"></span>`;
+    if (isNum(v.score)) s += `<span class="mk" style="left:${X(v.score).toFixed(2)}%;background:${COLOR[b] || "var(--ink-2)"}"></span>`;
+    if (tr._h !== s) { tr.innerHTML = s; tr._h = s; }
+    $(".vfoot b", el).textContent = f(v.score, 2);
+  });
+}
+function drawLens(I) {
+  const box = $("#lensbox");
+  const V = I.views || [];
+  // strongest region of the worst view (else the strongest anywhere)
+  let best = null;
+  const consider = (v) => (v.regions || []).forEach((r) => {
+    if (r && isNum(r.x) && isNum(r.y) && isNum(r.r) && (!best || (r.peak ?? -1e9) > (best.r.peak ?? -1e9))) best = { v, r };
+  });
+  const wv = V.find((v) => v.name === I.worst_view);
+  if (wv) consider(wv);
+  if (!best) V.forEach(consider);
+  const sig = best ? `${best.v.img}|${best.r.x}|${best.r.y}|${best.r.r}|${best.r.peak}` : `none|${I.verdict}`;
+  if (box._sig === sig) return;
+  box._sig = sig;
+  if (!best) {
+    box.innerHTML = I.verdict === "good"
+      ? `<div class="lens clear">${ICON.clear}</div><div class="lcap"><b>nothing unusual found</b><br>on any of the 3 sides</div>`
+      : `<div class="lens neutral">${ICON.dots}</div><div class="lcap">no single spot<br>stands out</div>`;
+    return;
+  }
+  const { v, r } = best;
+  const w = Math.min(1, Math.max(0.24, 2 * r.r * 1.9)); // fraction of the image shown in the lens
+  const Z = 100 / w; // image size in % of the lens
+  let left = 50 - r.x * Z, top = 50 - r.y * Z;
+  left = Math.min(0, Math.max(100 - Z, left)); top = Math.min(0, Math.max(100 - Z, top));
+  const rcx = left + r.x * Z, rcy = top + r.y * Z, rd = 2 * r.r * Z;
+  const col = regionColor(r.peak, I);
+  box.innerHTML = `<div class="lens" style="--lc:${col}"><img src="${esc(v.img)}" alt="" style="width:${Z.toFixed(1)}%;height:${Z.toFixed(1)}%;left:${left.toFixed(1)}%;top:${top.toFixed(1)}%">
+      <span class="lring" style="left:${rcx.toFixed(1)}%;top:${rcy.toFixed(1)}%;width:${rd.toFixed(1)}%;height:${rd.toFixed(1)}%"></span></div>
+    <div class="lcap">zoom · <b>${esc(v.label || VIEW_LABEL[v.name] || v.name)}</b><br>spot score <b>${f(r.peak, 2)}</b></div>`;
+}
+
+/* ---------- efficiency ---------- */
+function renderEff(p, bench, P, cfg) {
+  const body = $("#effbody");
+  const live = !!(p && p.live);
+  const pill = live ? '<span class="dot"></span>measured live on this laptop' : '<span class="dot" style="background:var(--warn)"></span>power log isn\'t running';
+  if ($("#efflive")._h !== pill) { $("#efflive").innerHTML = pill; $("#efflive")._h = pill; }
+  body.classList.toggle("off", !live);
+  if (!body.querySelector(".tiles")) {
+    body.innerHTML = `
+      <div class="tiles">
+        <div class="tile"><div class="tl">${ICON.bolt}Energy per sorted brick</div>
+          <div class="tv num"><span id="eWh">–</span><small>Wh</small></div>
+          <div class="tplain" id="ePhone">waiting for the first sorted brick</div>
+          <div class="tsub" id="eSub"></div></div>
+        <div class="tile"><div class="tl">${ICON.plug}The computer, right now</div>
+          <div class="tv num"><span id="eW">–</span><small>W</small></div>
+          <div class="tplain" id="eBulb"></div>
+          <div class="sparkw"><svg class="spark" id="spark" viewBox="0 0 300 60" preserveAspectRatio="none" role="img" aria-label="computer power over the last 5 minutes, with a 60 W light bulb as the reference line"></svg><span class="ref" id="sparkref"></span></div>
+          <div class="tsub" id="eWsub"></div></div>
+      </div>
+      <div class="thermo"><div class="row1"><span class="tl" style="align-self:center">${ICON.temp}Chip temperature</span><span class="big num" id="eC">–</span><span class="plain" id="eCplain"></span></div>
+        <div class="meter"><div class="fill" id="eCfill"></div></div>
+        <div class="mscale"><span>0 °C</span><span id="eCnote"></span><span id="eCmax">limit</span></div></div>
+      <div class="where"><div class="wh">Where the AI runs</div><div id="devs" style="display:flex;flex-direction:column;gap:.36rem"></div></div>
+      <div class="speed" id="speed"></div>
+      <div class="foot" id="effoot"></div>`;
+  }
+  if (!live) {
+    ["#eWh", "#eW", "#eC"].forEach((s) => { $(s).textContent = "–"; $(s)._v = null; });
+    $("#ePhone").textContent = "needs the power log";
+    $("#eBulb").textContent = "the power log isn't running (tools/power_log.py)";
+    ["#eSub", "#eWsub", "#eCplain", "#eCnote", "#sparkref"].forEach((s) => ($(s).textContent = ""));
+    $("#spark").innerHTML = ""; $("#eCfill").style.width = "0";
+  } else {
+    const b = p.brick;
+    const wh = b ? (isNum(b.Wh) ? b.Wh : isNum(b.J) ? b.J / 3600 : null) : null;
+    if (isNum(wh) && wh > 0) {
+      tween($("#eWh"), wh, (v) => v.toFixed(v < 1 ? 2 : 1));
+      const per = PHONE_WH / wh;
+      $("#ePhone").innerHTML = `one phone charge could sort <b>~${per >= 100 ? Math.round(per / 10) * 10 : Math.round(per)} bricks</b>`;
+      $("#eSub").textContent = [isNum(b.J) ? `${Math.round(b.J)} J` : null, isNum(b.s) ? `${f(b.s, 0)} s each` : null, isNum(b.n) ? `avg of ${b.n}` : null,
+        b.domain === "pkg" ? "processor chip only" : "whole computer"].filter(Boolean).join(" · ");
+    } else {
+      $("#eWh").textContent = "–"; $("#eWh")._v = null; $("#ePhone").textContent = "waiting for the first sorted brick"; $("#eSub").textContent = "";
+    }
+    const w = isNum(p.psys_W) ? p.psys_W : p.pkg_W;
+    tween($("#eW"), w, (v) => v.toFixed(0));
+    if (isNum(w)) $("#eBulb").innerHTML = w < BULB_W ? `less than one <b>60 W light bulb</b>` : `about <b>${(w / BULB_W).toFixed(1)}×</b> a 60 W light bulb`;
+    $("#eWsub").textContent = [isNum(p.pkg_W) ? `chip ${f(p.pkg_W, 0)} W` : null, isNum(p.gpu_W) ? `graphics ${f(p.gpu_W, 1)} W` : null,
+      p.on_mains === false ? "on battery" : null, "excl. screen & arm motors"].filter(Boolean).join(" · ");
+    drawSpark(p);
+    const tj = isNum(p.tjmax_C) ? p.tjmax_C : 100;
+    if (isNum(p.pkg_C)) {
+      tween($("#eC"), p.pkg_C, (v) => `${v.toFixed(0)} °C`);
+      const head = isNum(p.headroom_C) ? p.headroom_C : tj - p.pkg_C;
+      $("#eCplain").innerHTML = `<b>${f(head, 0)} °C</b> below the chip's safety limit`;
+      const fr = Math.min(1, Math.max(0, p.pkg_C / tj)), fill = $("#eCfill");
+      fill.style.width = (fr * 100).toFixed(1) + "%";
+      fill.style.background = p.pkg_C >= tj - 5 ? "var(--bad)" : p.pkg_C >= tj - 15 ? "var(--warn)" : "var(--good)";
+      $("#eCmax").textContent = `${f(tj, 0)} °C limit`;
+      $("#eCnote").textContent = p.gpu_throttle ? `graphics held at its power cap (${p.gpu_throttle})` : "no throttling";
+    }
+  }
+  renderDevices(p, P);
+  renderSpeed(bench, cfg);
+  const cont = bench && Array.isArray(bench.rows) && bench.rows.some((r) => r.contended) ? " · * measured while other jobs ran" : "";
+  $("#effoot").textContent = (bench && bench.stamp ? `benchmark ${bench.stamp}${bench.system && bench.system.openvino ? ", OpenVINO " + String(bench.system.openvino).split("-")[0] : ""} · ` : "")
+    + "power from the chip's own energy counters (RAPL)" + cont;
+}
+function drawSpark(p) {
+  const s = p.series || {};
+  const t = s.t || [], y = s.psys_W && s.psys_W.some(isNum) ? s.psys_W : s.pkg_W || [];
+  const svg = $("#spark");
+  if (t.length < 2 || !y.length) { svg.innerHTML = ""; $("#sparkref").textContent = ""; return; }
+  const t1 = t[t.length - 1], t0 = Math.max(t[0], t1 - 300);
+  const pts = [];
+  t.forEach((ti, i) => { if (ti >= t0 && isNum(y[i])) pts.push([ti, y[i]]); });
+  if (pts.length < 2) { svg.innerHTML = ""; $("#sparkref").textContent = ""; return; }
+  const ymax = Math.max(BULB_W * 1.12, ...pts.map((q) => q[1])) * 1.04;
+  const X = (ti) => ((ti - t0) / (t1 - t0 || 1)) * 296 + 2, Y = (v) => 58 - (v / ymax) * 54;
+  const line = pts.map((q) => `${X(q[0]).toFixed(1)},${Y(q[1]).toFixed(1)}`).join(" ");
+  const area = `M${X(pts[0][0]).toFixed(1)},58 L${line.replace(/ /g, " L")} L${X(pts[pts.length - 1][0]).toFixed(1)},58 Z`;
+  const last = pts[pts.length - 1], yb = Y(BULB_W);
+  svg.innerHTML = `
+    <line x1="0" y1="${yb.toFixed(1)}" x2="300" y2="${yb.toFixed(1)}" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+    <path d="${area}" fill="var(--ink-2)" opacity="0.10"/>
+    <polyline points="${line}" fill="none" stroke="var(--ink-2)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <line x1="${X(last[0]).toFixed(1)}" y1="${Y(last[1]).toFixed(1)}" x2="${X(last[0]).toFixed(1)}" y2="${Y(last[1]).toFixed(1)}" stroke="var(--ink)" stroke-width="8" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+  const ref = $("#sparkref");
+  ref.textContent = "60 W bulb";
+  ref.style.top = ((yb / 60) * 100).toFixed(1) + "%";
+}
+function renderDevices(p, P) {
+  const box = $("#devs");
+  const runs = { GPU: [], NPU: [], CPU: [] };
+  (P || []).forEach((s) => {
+    if (s.device && runs[s.device] && s.key !== "optimize") {
+      runs[s.device].push({ perceive: "camera check", detect: "defect check", reason: "decision", act: "motion plan (ACT)" }[s.key] || s.title);
+    }
+  });
+  const live = p && p.live;
+  const load = {
+    GPU: live ? { v: isNum(p.gpu_mhz) ? `${Math.round(p.gpu_mhz)} MHz` : "–", sub: isNum(p.gpu_W) ? `${f(p.gpu_W, 1)} W` : "", frac: isNum(p.gpu_mhz) && isNum(p.gpu_max_mhz) && p.gpu_max_mhz > 0 ? p.gpu_mhz / p.gpu_max_mhz : null } : null,
+    NPU: live ? { v: isNum(p.npu_pct) ? `${Math.round(p.npu_pct)} %` : "–", sub: "busy", frac: isNum(p.npu_pct) ? p.npu_pct / 100 : null } : null,
+    CPU: live ? { v: isNum(p.cpu_pct) ? `${Math.round(p.cpu_pct)} %` : "–", sub: "busy", frac: isNum(p.cpu_pct) ? p.cpu_pct / 100 : null } : null,
+  };
+  const html = DEV_ORDER.map((d) => {
+    const r = runs[d], L = load[d];
+    return `<div class="dev"><div class="dn"><span class="dot d-${d}"></span>${DEV[d].name}</div>
+      <div class="runs ${r.length ? "" : "none"}">${r.length ? esc([...new Set(r)].join(" · ")) : "idle · available for more AI"}</div>
+      <div class="load num">${L ? esc(L.v) : "–"}<small>${L ? esc(L.sub) : ""}</small>${L && isNum(L.frac) ? `<div class="mini"><i style="width:${(Math.min(1, L.frac) * 100).toFixed(0)}%;background:var(--${d.toLowerCase()})"></i></div>` : ""}</div></div>`;
+  }).join("");
+  if (box._h !== html) { box.innerHTML = html; box._h = html; }
+}
+const ROLE_NAME = { policy: "motion plan", anomaly: "defect check, 1 view" };
+function renderSpeed(bench, cfg) {
+  const box = $("#speed");
+  if (!bench || !Array.isArray(bench.rows) || !bench.rows.length) {
+    const h = '<div class="headline muted">Speed benchmark: not run yet</div>';
+    if (box._h !== h) { box.innerHTML = h; box._h = h; }
+    return;
+  }
+  const groups = [];
+  bench.rows.forEach((r) => {
+    let g = groups.find((x) => x.model === r.model);
+    if (!g) { g = { model: r.model, role: r.role, rows: [] }; groups.push(g); }
+    g.rows.push(r);
+  });
+  const want = cfg && cfg.anomaly_model;
+  const rank = (g) => (g.role === "policy" ? 0 : (want ? g.rows.some((r) => r.label === want) : /patchcore/i.test(g.model)) ? 1 : 2);
+  groups.sort((a, b) => rank(a) - rank(b));
+  const shown = groups.slice(0, 2);
+  const lines = [];
+  shown.forEach((g) => {
+    const ok = g.rows.filter((r) => !r.error && isNum(r.median_ms));
+    if (!ok.length) return;
+    const best = ok.reduce((a, b) => (b.median_ms < a.median_ms ? b : a));
+    const cpu = ok.find((r) => r.device === "CPU");
+    const what = g.role === "policy" ? "Planning the next moves" : "Checking one view for defects";
+    let s = `${what}: <b>${fms(best.median_ms)} ms</b> on the ${devName(best.device)}`;
+    const ratio = cpu && cpu !== best ? cpu.median_ms / best.median_ms : 0;
+    if (ratio >= 1.5) s += ` — <b>${ratio.toFixed(ratio >= 10 ? 0 : 1)}× faster</b> than the CPU`;
+    else if (g.role === "policy" && best.median_ms < FRAME_MS) s += ` — quicker than one camera frame`;
+    lines.push(s);
+  });
+  let html = lines.map((l) => `<div class="headline">${l}</div>`).join("");
+  html += shown.map((g) => {
+    const ok = g.rows.filter((r) => !r.error && isNum(r.median_ms));
+    const mx = Math.max(...ok.map((r) => r.median_ms), 1);
+    const rows = DEV_ORDER.map((d) => {
+      const r = g.rows.find((x) => x.device === d);
+      if (!r) return "";
+      if (r.error || !isNum(r.median_ms)) {
+        return `<div class="brow" title="${esc(r.error || "")}"><span class="bl">${devName(d)}</span><span class="bt"><span class="bv err">${/compile|memory|fit|alloc/i.test(r.error || "") ? "didn't fit on this unit" : "not measured"}</span></span></div>`;
+      }
+      const w = Math.max(1.5, (r.median_ms / mx) * 100);
+      const inUse = cfg && ((g.role === "policy" && cfg.act_device === d) || (g.role === "anomaly" && rank(g) === 1 && cfg.anomaly_device === d));
+      return `<div class="brow" title="${esc(`${g.model} on ${devName(d)}: median ${r.median_ms} ms, p95 ${r.p95_ms ?? "–"} ms${r.contended ? " (measured while other jobs ran)" : ""}`)}"><span class="bl">${devName(d)}</span><span class="bt"><span class="bb" style="width:calc(${w.toFixed(1)}% - 6rem);background:var(--${d.toLowerCase()})"></span><span class="bv num">${fms(r.median_ms)} ms${r.contended ? "*" : ""}</span>${inUse ? '<span class="inuse">in use</span>' : ""}</span></div>`;
+    }).join("");
+    return `<div class="bgroup"><div class="gname">${esc(ROLE_NAME[g.role] || g.model)}<small>${esc(g.model)} · shorter = faster</small></div>${rows}</div>`;
+  }).join("");
+  if (box._h !== html) { box.innerHTML = html; box._h = html; }
+}
+
+/* ---------- counts ---------- */
+function renderCounts(c) {
+  const box = $("#counts");
+  if (!box.querySelector(".cnt")) {
+    box.innerHTML = `
+      <div class="cnt hero"><span class="k">Bricks sorted</span><span class="v num" id="cS">–</span><span class="s" id="cSs"></span></div>
+      <div class="vsep"></div>
+      <div class="cnt"><span class="k"><span class="dot s-good"></span>Good</span><span class="v num" id="cG">–</span><span class="s">into the good bowl</span></div>
+      <div class="cnt"><span class="k"><span class="dot s-bad"></span>Defect</span><span class="v num" id="cD">–</span><span class="s" id="cDs"></span></div>
+      <div class="vsep"></div>
+      <div class="cnt"><span class="k">Cycle time</span><span class="v num" id="cT">–</span><span class="s" id="cTs"></span></div>`;
+  }
+  const k = (c && c.counts) || {};
+  const i0 = (v) => Math.round(v).toString();
+  tween($("#cS"), k.sorted, i0); tween($("#cG"), k.good, i0); tween($("#cD"), k.defect, i0);
+  $("#cSs").textContent = isNum(k.failed) && k.failed > 0 ? `${k.failed} retried / missed` : "fully autonomous";
+  $("#cDs").textContent = isNum(k.uncertain) && k.uncertain > 0 ? `incl. ${k.uncertain} unsure → defect` : "into the defect bowl";
+  const med = c && c.cycle_s_median, lst = c && c.cycle_s_last;
+  tween($("#cT"), isNum(med) ? med : lst, (v) => `${v.toFixed(0)} s`);
+  $("#cTs").textContent = isNum(med) ? `median per brick${isNum(lst) ? ` · last ${f(lst, 0)} s` : ""}` : isNum(lst) ? "last brick" : "per brick";
+}
+
+/* ---------- history ---------- */
+function renderHistory(H) {
+  const row = $("#hrow");
+  const n = parseInt(getComputedStyle(document.documentElement).getPropertyValue("--hist-n")) || 8;
+  if (!Array.isArray(H) || !H.length) {
+    if (!row.querySelector(".hempty")) { row.innerHTML = '<div class="hempty">sorted bricks will appear here</div>'; row._sig = ""; }
+    $("#histsub").textContent = "";
+    return;
+  }
+  const items = H.slice().sort((a, b) => (b.cycle ?? 0) - (a.cycle ?? 0)).slice(0, n);
+  const keyOf = (h) => `${h.cycle}:${h.verdict}:${h.thumb}:${h.result}`;
+  const sig = items.map(keyOf).join("|") + "#" + n;
+  if (row._sig === sig) return;
+  const old = new Set((row._sig || "").split("#")[0].split("|"));
+  const first = !row._sig;
+  row._sig = sig;
+  row.innerHTML = items.map((h) => {
+    const vc = verdictClass(h.verdict, h.uncertain);
+    const failed = h.result && h.result !== "sorted";
+    const icon = h.verdict === "good" ? ICON.ok : h.verdict === "defect" ? (h.uncertain ? ICON.q : ICON.x) : ICON.dots;
+    const enter = !first && !old.has(keyOf(h)) ? " enter" : "";
+    return `<div class="hb ${vc}${failed ? " failed" : ""}${enter}" title="${esc(`brick #${h.cycle}: ${verdictWord(h.verdict, h.uncertain)}, score ${f(h.score, 2)}${h.result ? ", " + h.result : ""}`)}">
+      <div class="tim">${h.thumb ? `<img src="${esc(h.thumb)}" alt="">` : ""}<span class="ic ${vc ? "s-" + vc : ""}" style="color:${vc === "warn" ? "#0b0b0b" : "#fff"}">${icon}</span><span class="cy num">#${esc(h.cycle)}</span></div>
+      <div class="meta num"><span>${failed ? esc(h.result) : f(h.score, 2)}</span><span>${isNum(h.cycle_s) ? f(h.cycle_s, 0) + " s" : ""}</span></div></div>`;
+  }).join("");
+  $("#histsub").textContent = `last ${items.length}`;
+}
+
+window.addEventListener("resize", () => { if (S) { $("#hrow")._sig = null; render(S); } });
+tick();
+poll();
+</script>
+</body>
+</html>

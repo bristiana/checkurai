@@ -21,7 +21,13 @@ def slew(prev, tgt):
 leader.connect(calibrate=False); follower.connect(calibrate=False)
 lagf = open(LAG, "w")
 try:
-    obs = follower.get_observation(); a = lead()
+    for attempt in range(10):            # the bus can miss the very first packet right after connect
+        try:
+            obs = follower.get_observation(); a = lead(); break
+        except ConnectionError as e:
+            print(f"read failed ({e.__class__.__name__}), retry {attempt + 1}/10", flush=True); time.sleep(0.3)
+    else:
+        raise SystemExit("The follower or leader does not answer: check the 12 V power and the servo cables.")
     start = {k: float(obs[k]) for k in a}; keys = list(a)
     lagf.write("t," + ",".join(f"{k[:-4]}_cmd,{k[:-4]}_act" for k in keys) + "\n")
     print("Start differences (leader - follower):", {k[:-4]: round(a[k] - start[k], 1) for k in a}, flush=True)

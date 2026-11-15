@@ -96,10 +96,14 @@ class Shared:
         self.live_jpg: bytes | None = None
         self.resolution = ""
         self.device = ""
+        self.note = ""  # instruction line shown on the page (--note)
+        self.max = 0
+        self.next_requested = threading.Event()  # "Next" button: end this run early
 
     def status(self) -> dict:
         with self.lock:
-            return {"label": self.label, "state": self.state, "saved_this_run": self.count_run,
+            return {"label": self.label, "note": self.note, "max": self.max,
+                    "state": self.state, "saved_this_run": self.count_run,
                     "total_in_folder": self.count_total, "last": self.saved[-1][0].name if self.saved else None,
                     "resolution": self.resolution, "device": self.device, "folder": str(self.folder)}
 
@@ -124,10 +128,13 @@ figure{margin:0;flex:1 1 420px} img{width:100%;border-radius:6px;background:#222
 #state{font-weight:700;padding:2px 10px;border-radius:4px}
 .waiting{background:#345} .motion{background:#a60} .saved{background:#2a6} .starting{background:#444}
 button{font:inherit;padding:6px 14px;margin-left:12px}
+#note{font-size:22px;font-weight:700;background:#235;padding:10px 14px;border-radius:6px;margin:0 0 10px}
+#note:empty{display:none}
 </style>
 <h1>Inspection capture: <span id=label></span></h1>
+<p id=note></p>
 <p><span id=state></span> &nbsp; saved this run: <b id=run></b> &nbsp; in folder: <b id=total></b>
-&nbsp; <span id=res></span> <button id=undo>Delete last photo</button></p>
+&nbsp; <span id=res></span> <button id=undo>Delete last photo</button> <button id=next>Next (skip the rest of this step)</button></p>
 <div class=row>
 <figure><figcaption>Last saved photo: <span id=last></span></figcaption><img id=lastimg alt="last saved photo"></figure>
 <figure><figcaption>Live</figcaption><img id=live alt="live view"></figure>
@@ -138,13 +145,14 @@ async function tick(){
   try{
     const s=await (await fetch('/status.json',{cache:'no-store'})).json();
     label.textContent=s.label; state.textContent=s.state; state.className=s.state;
-    run.textContent=s.saved_this_run; total.textContent=s.total_in_folder;
+    note.textContent=s.note||''; run.textContent=s.saved_this_run+(s.max?' / '+s.max:''); total.textContent=s.total_in_folder;
     res.textContent=s.resolution+' '+s.device; last.textContent=s.last||'none yet';
     if(s.last!==shown){shown=s.last; lastimg.src=s.last?'/last.jpg?'+encodeURIComponent(s.last):'';}
     live.src='/live.jpg?'+Date.now();
   }catch(e){state.textContent='not running'; state.className='starting';}
 }
 undo.onclick=async()=>{await fetch('/undo',{method:'POST'}); tick();};
+next.onclick=async()=>{await fetch('/next',{method:'POST'}); tick();};
 setInterval(tick,1000); tick();
 </script>"""
 
@@ -180,6 +188,10 @@ def make_handler(shared: Shared):
                 name = shared.undo()
                 print(f"deleted {name}" if name else "nothing to delete", flush=True)
                 self._send(200, json.dumps({"deleted": name}).encode(), "application/json")
+            elif self.path == "/next":
+                shared.next_requested.set()
+                print("Next pressed: ending this run", flush=True)
+                self._send(200, b"{}", "application/json")
             else:
                 self._send(404, b"not found", "text/plain")
 
@@ -206,6 +218,7 @@ def main() -> None:
     ap.add_argument("--still", type=float, default=0.003, help="changed fraction frame-to-frame below which the picture counts as still")
     ap.add_argument("--same", type=float, default=0.001, help="changed fraction vs the last saved photo at or below which it is a duplicate")
     ap.add_argument("--debug", action="store_true", help="print the motion numbers once a second")
+    ap.add_argument("--note", default="", help="instruction line shown on the status page")
     args = ap.parse_args()
 
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.label):
@@ -223,6 +236,7 @@ def main() -> None:
 
     shared = Shared(args.label, folder)
     shared.resolution, shared.device = f"{w}x{h}", dev
+    shared.note, shared.max = args.note, args.max
     server = ThreadingHTTPServer(("127.0.0.1", args.port), make_handler(shared))
     threading.Thread(target=server.serve_forever, daemon=True).start()
     print(f"status page: http://127.0.0.1:{args.port}   saving to {folder}", flush=True)
@@ -243,7 +257,7 @@ def main() -> None:
     dmax = dref_max = 0.0
     fails = 0
     try:
-        while not stop.is_set():
+        while not stop.is_set() and not shared.next_requested.is_set():
             ok, frame = cap.read()
             if not ok or frame is None:
                 fails += 1
