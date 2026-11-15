@@ -222,7 +222,13 @@ def read_live() -> dict | None:
 
 def img_url(live: dict, name: str) -> str | None:
     v = (live.get("img") or {}).get(name)
-    return f"/img/{name}.jpg?v={v}" if v else None
+    if not v:
+        return None
+    try:  # the counter restarts at 1 every run: add the write time, or the browser keeps showing an older run's picture
+        m = int((LIVE / f"{name}.jpg").stat().st_mtime * 1000)
+    except OSError:
+        m = 0
+    return f"/img/{name}.jpg?v={v}.{m}"
 
 
 def cell_cfg() -> dict:
