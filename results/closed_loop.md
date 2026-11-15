@@ -32,24 +32,29 @@ Made by `tools/closed_loop_report.py` from the run folders below and the power l
 | 20261114-221034 | 1/1 | NPU (openvino, async) | resnet18_synth_v1 / GPU | act-pick-v6-h100 / act-place-good-v5 / act-place-bad-v6 | `data/cell_runs/20261114-221034/cycles.jsonl` |
 | 20261114-221155 | 1/1 | NPU (openvino, async) | resnet18_synth_v1 / GPU | act-pick-v6-h100 / act-place-good-v5 / act-place-bad-v6 | `data/cell_runs/20261114-221155/cycles.jsonl` |
 | 20261114-221313 | 1/1 | NPU (openvino, async) | resnet18_synth_v1 / GPU | act-pick-v6-h100 / act-place-good-v5 / act-place-bad-v6 | `data/cell_runs/20261114-221313/cycles.jsonl` |
+| 20261114-222751 | 1/1 | NPU (openvino, async) | resnet18_synth2_v2only / GPU | act-pick-v6-h100 / act-place-good-v5 / act-place-bad-v6 | `data/cell_runs/20261114-222751/cycles.jsonl` |
+| 20261114-224025 | 1/1 | GPU (openvino, async) | resnet18_synth2_v2only / GPU | act-pick-v6-h100 / smolvla-place-both-v7-h100-44ep / smolvla-place-both-v7-h100-44ep | `data/cell_runs/20261114-224025/cycles.jsonl` |
+| 20261114-224436 | 1/1 | GPU (openvino, async) | resnet18_synth2_v2only / GPU | act-pick-v6-h100 / smolvla-place-both-v7-h100-44ep / smolvla-place-both-v7-h100-44ep | `data/cell_runs/20261114-224436/cycles.jsonl` |
+| 20261114-225024 | 1/1 | GPU (openvino, async) | resnet18_synth2_v2only / GPU | act-pick-v6-h100 / smolvla-place-both-v7-h100-44ep / smolvla-place-both-v7-h100-44ep | `data/cell_runs/20261114-225024/cycles.jsonl` |
+| 20261114-225302 | 1/1 | GPU (openvino, async) | resnet18_synth2_v2only / GPU | smolvla-pick-place-v7-a100 / smolvla-pick-place-v7-a100 / smolvla-pick-place-v7-a100 | `data/cell_runs/20261114-225302/cycles.jsonl` |
 
 Skipped 4 run folders that are not closed-loop runs or wrote no cycle (e.g. 20261114-204008 (--only place_good), 20261114-211615 (no run.json), 20261114-211840 (no cycle written), 20261114-214902 (no cycle written)).
 
 ## Summary
 
-- Cycles attempted: **36**, sorted without help: **24** (67 %)
-- Outcomes: sorted: 24, aborted: pick failed: 10, aborted: arm not at HOME at cycle start: 2
-- Cycle time, sorted bricks (n=24): mean 58.31 s, p50 45.03 s, p95 113.53 s; pick p50 14.16 s, place p50 12.46 s, inspection p50 5391.4 ms (anomaly inference p50 1003.44 ms per frame of 3 views)
-- Verdicts on sorted bricks: good 9, defect 15; uncertain 3 (go to the defect bowl), re-inspected 5; bowls: good 9, defect 15
-- Verdict accuracy vs hand labels (8 bricks, `results/truth.csv`): **62 %**
+- Cycles attempted: **41**, sorted without help: **26** (63 %)
+- Outcomes: sorted: 26, aborted: pick failed: 12, aborted: arm not at HOME at cycle start: 2, aborted: place failed: 1
+- Cycle time, sorted bricks (n=26): mean 58.5 s, p50 45.03 s, p95 113.21 s; pick p50 14.16 s, place p50 12.46 s, inspection p50 4606.75 ms (anomaly inference p50 846.79 ms per frame of 3 views)
+- Verdicts on sorted bricks: good 9, defect 17; uncertain 3 (go to the defect bowl), re-inspected 5; bowls: good 9, defect 17
+- Verdict accuracy vs hand labels (9 bricks, `results/truth.csv`): **67 %**
 
 | true \ bowl | good bowl | defect bowl |
 |---|---|---|
 | good | 1 | 0 |
-| defect | 3 | 4 |
+| defect | 3 | 5 |
 
-- Energy per sorted brick (`results/power-1114-1353.csv`, 24 bricks, median): whole laptop 1824.8 J = 0.5069 Wh, CPU package 1204.4 J; mean draw 43.5 W; above idle (29.24 W, quietest 60 s window of the power log): 660.9 J
-- Thermals during cycles: package max 91.0 °C, min headroom to TjMax 9.0 °C; NPU busy 0.5 %, iGPU clock 1969 MHz (medians of cycle means)
+- Energy per sorted brick (`results/power-1114-1353.csv`, 26 bricks, median): whole laptop 1824.8 J = 0.5069 Wh, CPU package 1204.4 J; mean draw 43.5 W; above idle (18.57 W, quietest 60 s window of the power log): 1109.7 J
+- Thermals during cycles: package max 100.0 °C, min headroom to TjMax 0.0 °C; NPU busy 0.5 %, iGPU clock 1957 MHz (medians of cycle means)
 
 ## Cycles
 
@@ -91,3 +96,8 @@ Skipped 4 run folders that are not closed-loop runs or wrote no cycle (e.g. 2026
 | 20261114-221034 | 0 | sorted | 45.84 | good | 0.14 (0.42/0.71) | 1 | good | defect | pick:done:14.16 place_good:done:27.64 |
 | 20261114-221155 | 0 | sorted | 44.22 | good | 0.32 (0.42/0.71) | 2 | good | defect | pick:done:28.48 place_good:done:11.72 |
 | 20261114-221313 | 0 | sorted | 114.44 | good | 0.26 (0.42/0.71) | 2 | good | defect | pick:done:41.02 place_good:timeout:45.01 place_good:done:16.74 |
+| 20261114-222751 | 0 | sorted | 23.04 | defect | 1.00 (0.37/0.68) | 1 | defect | – | pick:done:10.71 place_bad:done:9.82 |
+| 20261114-224025 | 0 | sorted | 98.54 | defect | 0.84 (0.37/0.68) | 1 | defect | defect | pick:done:39.21 place_bad:done:41.03 |
+| 20261114-224436 | 0 | aborted: pick failed | 90.77 | – | – | 0 | – | – | pick:timeout:45.04 pick:failed:37.44 |
+| 20261114-225024 | 0 | aborted: place failed | 93.56 | defect | 0.99 (0.37/0.68) | 1 | – | – | pick:done:12.47 place_bad:done:6.32 place_bad:failed:35.35 place_bad:no_motion:10.06 |
+| 20261114-225302 | 0 | aborted: pick failed | 55.22 | – | – | 0 | – | – | pick:failed:27.41 |

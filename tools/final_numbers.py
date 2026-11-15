@@ -12,7 +12,7 @@ Steps:
    - only the supervised-classifier runs (any other anomaly_model, e.g. resnet18_synth_v1)  -> results/closed_loop_classifier.md/.json
 2. reads the clean device bench results/bench-1114-2009.json (ACT pick model: median ms per chunk on GPU / NPU / CPU)
 3. reads results/int8.json (full INT8 drift, conv-only INT8 drift and size)
-4. reads the classifier's validation (results/classifier/resnet18_synth_v1_meta.json), its live thresholds (low / high
+4. reads the live classifier's validation (results/classifier/<cell.json anomaly_model>_meta.json), its live thresholds (low / high
    from the classifier runs' cycles.jsonl) and the PatchCore baseline on the same photo set
    (results/anomaly_zoo/table.json, row patchcore_views_b2all_fx_384)
 5. replaces the {{placeholders}} in the template; prints a source table (placeholder -> value -> file) to stdout
@@ -38,7 +38,16 @@ INT8 = ROOT / "results" / "int8.json"
 CL = ROOT / "results" / "closed_loop"                  # all runs (.md / .json)
 CL_PC = ROOT / "results" / "closed_loop_patchcore"     # PatchCore-era runs
 CL_CLS = ROOT / "results" / "closed_loop_classifier"   # supervised classifier runs
-CLS_META = ROOT / "results" / "classifier" / "resnet18_synth_v1_meta.json"
+def _live_cls_meta() -> Path:  # the classifier config/cell.json runs now (held-out photo test); v1 if its meta is missing
+    try:
+        name = json.loads((ROOT / "config" / "cell.json").read_text()).get("anomaly_model") or ""
+    except (OSError, json.JSONDecodeError):
+        name = ""
+    m = ROOT / "results" / "classifier" / f"{name}_meta.json"
+    return m if name and m.exists() else ROOT / "results" / "classifier" / "resnet18_synth_v1_meta.json"
+
+
+CLS_META = _live_cls_meta()
 ZOO = ROOT / "results" / "anomaly_zoo" / "table.json"
 ZOO_BASELINE = "patchcore_views_b2all_fx_384"          # PatchCore on the same 35-good / 24-defect photo set
 RUNS = ROOT / "data" / "cell_runs"

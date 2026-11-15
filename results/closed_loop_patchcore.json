@@ -284,13 +284,13 @@
   "gpu_mhz_mean_median": 1905,
   "on_mains": true,
   "idle": {
-   "t0": 1794713865.807,
-   "t1": 1794713925.819,
-   "psys_W_mean": 29.24,
-   "pkg_W_mean": 13.86,
+   "t0": 1794725729.314,
+   "t1": 1794725789.322,
+   "psys_W_mean": 18.57,
+   "pkg_W_mean": 5.44,
    "how": "quietest 60 s window of the power log"
   },
-  "psys_J_per_brick_above_idle_median": 700.4
+  "psys_J_per_brick_above_idle_median": 1223.3
  },
  "rows": [
   {

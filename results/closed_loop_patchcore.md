@@ -30,7 +30,7 @@ Skipped 2 run folders that are not closed-loop runs or wrote no cycle (e.g. 2026
 - Cycle time, sorted bricks (n=15): mean 60.5 s, p50 49.72 s, p95 108.95 s; pick p50 13.54 s, place p50 11.44 s, inspection p50 6141.3 ms (anomaly inference p50 1115.1 ms per frame of 3 views)
 - Verdicts on sorted bricks: good 5, defect 10; uncertain 3 (go to the defect bowl), re-inspected 3; bowls: good 5, defect 10
 - Verdict accuracy: no hand labels yet (fill `results/truth.csv` with run,cycle,truth)
-- Energy per sorted brick (`results/power-1114-1353.csv`, 15 bricks, median): whole laptop 2133.4 J = 0.5926 Wh, CPU package 1321.5 J; mean draw 43.5 W; above idle (29.24 W, quietest 60 s window of the power log): 700.4 J
+- Energy per sorted brick (`results/power-1114-1353.csv`, 15 bricks, median): whole laptop 2133.4 J = 0.5926 Wh, CPU package 1321.5 J; mean draw 43.5 W; above idle (18.57 W, quietest 60 s window of the power log): 1223.3 J
 - Thermals during cycles: package max 89.0 °C, min headroom to TjMax 11.0 °C; NPU busy 0 %, iGPU clock 1905 MHz (medians of cycle means)
 
 ## Cycles
