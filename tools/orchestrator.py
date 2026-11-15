@@ -758,6 +758,10 @@ class Cell:
                 break
             if not await self.rehome():
                 break
+            if name == "pick" and self.brick_on_spot_at_home():
+                print(f"[cell] pick {stages[-1].outcome}, but the brick is on the spot: going on to inspect it",
+                      flush=True)
+                break
             stages.append(await self.run_stage(name))
         return stages
 
@@ -765,6 +769,14 @@ class Cell:
         if self.camera is None or self.inspector is None:
             return True, -1.0
         return self.inspector.spot(self.camera.grab(3))
+
+    def brick_on_spot_at_home(self) -> bool:
+        """After a pick that did not end at HOME (the policy hovered over the spot until the timeout) and a re-home:
+        the arm is HOME and the spot camera sees the brick, so the pick did its job."""
+        if self.camera is None or self.inspector is None:
+            return False
+        q = self.s.q(self.home.names)
+        return q is not None and self.home.near(q) and self.spot()[0]
 
     async def reinspect(self, rec: dict[str, Any], first: Inspection) -> Inspection:
         """An uncertain verdict gets one more look before the cell decides: fresh frames, same model, same thresholds.
@@ -829,7 +841,8 @@ class Cell:
                     sts = await self.run_stage_tries("pick")
                     rec["stages"] += [asdict(x) for x in sts]
                     st = sts[-1]
-                    if st.outcome != "done":
+                    if st.outcome != "done" and not (st.outcome in ("timeout", "stalled")
+                                                     and self.brick_on_spot_at_home()):
                         raise Abort(f"pick {st.outcome}")
                     present, frac = self.spot()
                     rec["spot_after_pick"] = {"brick": present, "fraction": round(frac, 5), "attempt": attempt + 1}
